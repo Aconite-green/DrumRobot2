@@ -1,5 +1,4 @@
-#pragma once
-#include "SharedBuffer.hpp"
+
 #include "CommandParser.hpp"
 #include "Motor.hpp"
 #include "bin2str.hpp"

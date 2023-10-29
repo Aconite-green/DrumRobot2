@@ -7,17 +7,10 @@
 #include <map>
 
 #include "../include/Motor.hpp"
-#include "../include/MotorPathTask.hpp"
-#include "../include/MotorSignalSendTask.hpp"
 #include "../include/Task.hpp"
 #include <atomic>
 
 using namespace std;
-
-queue<can_frame> sendBuffer;
-queue<can_frame> recieveBuffer;
-queue<int> sensorBuffer;
-atomic<int> state(0); // 0: 실행, 1: 일시정지, 2: 종료
 
 int main()
 {
@@ -48,7 +41,7 @@ int main()
                                                           vector<uint32_t>{0x182},
                                                           "can0");*/
 
-    Task task(tmotors, maxonMotors, state, canUtils.getSockets(), sendBuffer, recieveBuffer, sensorBuffer);
+    Task task(tmotors, maxonMotors, canUtils.getSockets());
     thread threadLoop(task);
     threadLoop.join();
 
