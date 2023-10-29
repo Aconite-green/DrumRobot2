@@ -1,0 +1,47 @@
+USB I/O Software for Linux
+
+Please read file README under each subdirectory for more information
+if they are there.  This package try to provide convenient functions
+for USB I/O modules.  The function calls, there are some created
+under Linux, and some wrapped from the USB I/O library for Linux.
+
+The package may be precompiled.  Type "make clean" will clean up all
+compiled objects.  Type "make" will build all targets under the root
+directory of the package.
+
+----------------------------------------------------
+Due the creation of this package, the versions are
+
+  Linux kernel 2.6 or later version
+  GNU Make version 3.77 or later version
+  GNU gcc version egcs-2.91.66 or later version
+  NCURSES 5.0 (for i7kon only) or later version
+
+Other version may work if you give it a try.
+
+----------------------------------------------------
+Directories under the package-root:
+
+  <package-root>/
+              
+    usbio/      Library source codes and object modules
+
+    lib/        The static and shared library of USB I/O
+    
+    examples/   Codes for getting start.
+
+    include/    Headers
+
+----------------------------------------------------
+How to build examples with x86 lib and arm lib
+
+  Build x86/x64 examples
+    make
+
+  Build ARM examples
+    make Tool=ARM
+
+  Build ARM64 examples
+    make Tool=ARM64
+
+- end of file -
