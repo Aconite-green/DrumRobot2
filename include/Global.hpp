@@ -207,14 +207,10 @@ typedef struct ICPDAS_USBIO_PARAM {
 
 } ICPDAS_USBIO_DEV, *PICPDAS_USBIO_DEV;
 
-static PICPDAS_USBIO_DEV usbio[MAX_USB_DEVICES] = { 0 };
-
 /*
 typedef struct receivethread rxthread_t;
 static rxthread_t *rx_thread[MAX_USB_DEVICES] = { 0 };
 static int enable_rxthread[MAX_USB_DEVICES] = { 0 };
 */
 
-static BYTE AndVal[8] = {0xfe, 0xfd, 0xfb, 0xf7, 0xef, 0xdf, 0xbf, 0x7f};
-static BYTE OrVal[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 

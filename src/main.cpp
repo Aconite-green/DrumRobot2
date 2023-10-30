@@ -42,7 +42,7 @@ int main()
                                                           "can0");*/
 
     Task task(tmotors, maxonMotors, canUtils.getSockets());
-    thread threadLoop(task);
+    std::thread threadLoop(std::ref(task));
     threadLoop.join();
 
     return 0;
