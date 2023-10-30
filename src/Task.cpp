@@ -611,12 +611,8 @@ string trimWhitespace(const std::string& str) {
     return str.substr(first, (last - first + 1));
 }
 
-vector<double> connect(vector<double>& q1, vector<double>& q2, int k_val, int n_val)
+vector<double> connect(vector<double>& Q1, vector<double>& Q2, int k, int n)
 {
-    vector<double> Q1 = q1;
-	vector<double> Q2 = q2;
-	int k = k_val;
-	int n = n_val;
     vector<double> Qi;
     std::vector<double> A, B;
     const double PI = 3.14159265358979;
@@ -636,13 +632,8 @@ vector<double> connect(vector<double>& q1, vector<double>& q2, int k_val, int n_
     return Qi;
 }
 
-vector<double> IKfun(vector<double>& p1, vector<double>& p2, vector<double>& r_val, double s_val, double z0_val)
+vector<double> IKfun(vector<double>& P1, vector<double>& P2, vector<double>& R, double s, double z0)
 {
-    vector<double> P1 = p1;
-    vector<double> P2 = p2;
-    vector<double> R = r_val;
-    double s = s_val;
-    double z0 = z0_val;
     vector<double> Qf;
 
     double X1 = P1[0], Y1 = P1[1], z1 = P1[2];
@@ -1178,6 +1169,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         }
     }
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for RecieveTask
