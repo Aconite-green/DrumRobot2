@@ -90,9 +90,36 @@ private:
 
     struct can_frame frame;
 
+    int end = RF.size();
+    int line = 0;
+
+    double p_R = 0; // 오른손 이전 악기 유무
+	double p_L = 0; // 왼손 이전 악기 유무
+	double c_R = 0; // 오른손 현재 악기 유무
+	double c_L = 0; // 왼손 현재 악기 유무
+
+    /*
+	vector<double> P1 = {0.265, -0.391, -0.039837};	 // RightArm Standby
+	vector<double> P2 = {-0.265, -0.391, -0.039837}; // LeftArm Standby
+	int n_inst = 10;
+
+	vector<double> R = {0.368, 0.414, 0.368, 0.414};
+	double s = 0.530;
+	double z0 = 0.000;
+	*/
+	vector<double> P1 = {0.3, -0.45, -0.0866};	 // RightArm Standby
+	vector<double> P2 = {-0.3, -0.45, -0.0866}; // LeftArm Standby
+	int n_inst = 10;
+
+	vector<double> R = {0.500, 0.400, 0.500, 0.400};
+	double s = 0.600;
+	double z0 = 0.000;
+	vector<vector<double>> q;
+    
     void GetMusicSheet();
     void GetReadyArr();
     void PathLoopTask(queue<can_frame> &sendBuffer);
+    void GetBackArr();
 
     // Functions for SendLoop
     template <typename MotorMap>

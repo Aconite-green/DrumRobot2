@@ -933,142 +933,121 @@ void Task::GetReadyArr()
 
 void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 {
-    double p_R = 0; // 오른손 이전 악기 유무
-    double p_L = 0; // 왼손 이전 악기 유무
-    double c_R = 0; // 오른손 현재 악기 유무
-    double c_L = 0; // 왼손 현재 악기 유무재
-
-    /*
-    vector<double> P1 = {0.265, -0.391, -0.039837};	 // RightArm Standby
-    vector<double> P2 = {-0.265, -0.391, -0.039837}; // LeftArm Standby
-    int n_inst = 10;
-
-    vector<double> R = {0.368, 0.414, 0.368, 0.414};
-    double s = 0.530;
-    double z0 = 0.000;
-    */
-    vector<double> P1 = {0.3, -0.45, -0.0866};  // RightArm Standby
-    vector<double> P2 = {-0.3, -0.45, -0.0866}; // LeftArm Standby
-    int n_inst = 10;
-
-    vector<double> R = {0.500, 0.400, 0.500, 0.400};
-    double s = 0.600;
-    double z0 = 0.000;
     vector<vector<double>> Q(2, vector<double>(7, 0));
-    vector<vector<double>> q;
 
-    for (long unsigned int i = 0; i < RF.size(); i++)
+    c_R = 0;
+    c_L = 0;
+
+    for (int j = 0; j < n_inst; ++j)
     {
-        c_R = 0;
-        c_L = 0;
-
-        for (int j = 0; j < n_inst; ++j)
+        if (RA[line][j] != 0)
         {
-            if (RA[i][j] != 0)
-            {
-                P1 = right_inst[j];
-                c_R = 1;
-            }
-            if (LA[i][j] != 0)
-            {
-                P2 = left_inst[j];
-                c_L = 1;
-            }
+            P1 = right_inst[j];
+            c_R = 1;
         }
-
-        int Time = 0;
-        clock_t start = clock();
-
-        if (c_R == 0 && c_L == 0)
-        { // 왼손 & 오른손 안침
-            Q[0] = c_MotorAngle;
-            if (p_R == 1)
-            {
-                Q[0][4] = Q[0][4] + M_PI / 18;
-            }
-            if (p_L == 1)
-            {
-                Q[0][6] = Q[0][6] + M_PI / 18;
-            }
-            Q[1] = Q[0];
-        }
-        else
+        if (LA[line][j] != 0)
         {
-            Q[0] = IKfun(P1, P2, R, s, z0);
-            Q[1] = Q[0];
-            if (c_R == 0)
-            { // 왼손만 침
-                Q[0][4] = Q[0][4] + M_PI / 18;
-                Q[1][4] = Q[1][4] + M_PI / 18;
-                Q[0][6] = Q[0][6] + M_PI / 6;
-            }
-            if (c_L == 0)
-            { // 오른손만 침
-                Q[0][4] = Q[0][4] + M_PI / 6;
-                Q[0][6] = Q[0][6] + M_PI / 18;
-                Q[1][6] = Q[1][6] + M_PI / 18;
-            }
-            else
-            { // 왼손 & 오른손 침
-                Q[0][4] = Q[0][4] + M_PI / 6;
-                Q[0][6] = Q[0][6] + M_PI / 6;
-            }
+            P2 = left_inst[j];
+            c_L = 1;
         }
-
-        p_R = c_R;
-        p_L = c_L;
-
-        vector<double> Qi;
-        double timest = time_arr[i] / 2;
-        int n = round(timest / 0.005);
-        for (int k = 0; k < n; ++k)
-        {
-            Qi = connect(c_MotorAngle, Q[0], k, n);
-            q.push_back(Qi);
-
-            int j = 0; // motor num
-            for (auto &entry : tmotors)
-            {
-                std::shared_ptr<TMotor> &motor = entry.second;
-                float p_des = Qi[j];
-                TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
-                sendBuffer.push(frame);
-
-                j++;
-            }
-            // cout << "\n";
-        }
-        for (int k = 0; k < n; ++k)
-        {
-            Qi = connect(Q[0], Q[1], k, n);
-            q.push_back(Qi);
-
-            int j = 0; // motor num
-            for (auto &entry : tmotors)
-            {
-                std::shared_ptr<TMotor> &motor = entry.second;
-                float p_des = Qi[j];
-                TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
-                sendBuffer.push(frame);
-
-                j++;
-            }
-            // cout << "\n";
-        }
-
-        c_MotorAngle = Qi;
-
-        Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
-        cout << "TIME : " << Time << "ms\n";
     }
 
-    vector<double> Q0(7, 0);
-    vector<vector<double>> q_finish;
+    int Time = 0;
+    clock_t start = clock();
 
-    //// 끝나는자세 배열 생성
+    if (c_R == 0 && c_L == 0)
+    { // 왼손 & 오른손 안침
+        Q[0] = c_MotorAngle;
+        if (p_R == 1)
+        {
+            Q[0][4] = Q[0][4] + M_PI / 18;
+        }
+        if (p_L == 1)
+        {
+            Q[0][6] = Q[0][6] + M_PI / 18;
+        }
+        Q[1] = Q[0];
+    }
+    else
+    {
+        Q[0] = IKfun(P1, P2, R, s, z0);
+        Q[1] = Q[0];
+        if (c_R == 0)
+        { // 왼손만 침
+            Q[0][4] = Q[0][4] + M_PI / 18;
+            Q[1][4] = Q[1][4] + M_PI / 18;
+            Q[0][6] = Q[0][6] + M_PI / 6;
+        }
+        if (c_L == 0)
+        { // 오른손만 침
+            Q[0][4] = Q[0][4] + M_PI / 6;
+            Q[0][6] = Q[0][6] + M_PI / 18;
+            Q[1][6] = Q[1][6] + M_PI / 18;
+        }
+        else
+        { // 왼손 & 오른손 침
+            Q[0][4] = Q[0][4] + M_PI / 6;
+            Q[0][6] = Q[0][6] + M_PI / 6;
+        }
+    }
+
+    p_R = c_R;
+    p_L = c_L;
+
     vector<double> Qi;
-    int n = 800;
+    double timest = time_arr[line] / 2;
+    int n = round(timest / 0.005);
     for (int k = 0; k < n; ++k)
+    {
+        Qi = connect(c_MotorAngle, Q[0], k, n);
+        q.push_back(Qi);
+
+        int j = 0; // motor num
+        for (auto &entry : tmotors)
+        {
+            std::shared_ptr<TMotor> &motor = entry.second;
+            float p_des = Qi[j];
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
+            sendBuffer.push(frame);
+
+            j++;
+        }
+        // cout << "\n";
+    }
+    for (int k = 0; k < n; ++k)
+    {
+        Qi = connect(Q[0], Q[1], k, n);
+        q.push_back(Qi);
+
+        int j = 0; // motor num
+        for (auto &entry : tmotors)
+        {
+            std::shared_ptr<TMotor> &motor = entry.second;
+            float p_des = Qi[j];
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
+            sendBuffer.push(frame);
+
+            j++;
+        }
+        // cout << "\n";
+    }
+
+    c_MotorAngle = Qi;
+
+    Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
+    cout << "TIME : " << Time << "ms\n";
+
+}
+
+void Task::GetBackArr()
+{
+    vector<double> Q0(7, 0);
+	vector<vector<double>> q_finish;
+
+	//// 끝나는자세 배열 생성
+	vector<double> Qi;
+	int n = 800;
+	for (int k = 0; k < n; ++k)
     {
         Qi = connect(c_MotorAngle, Q0, k, n);
         q_finish.push_back(Qi);
@@ -1135,6 +1114,10 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
         if (sendBuffer.size() <= 10)
         {
+            if(line < end){
+                PathLoopTask(sendBuffer);
+                line++;
+            }
         }
 
         clock_t internal = clock();
