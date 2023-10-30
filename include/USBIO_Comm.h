@@ -60,7 +60,7 @@ typedef struct BulkValueParameter_St {
 #define ACT_PKT_FUNCTION_CODE   0
 #define ACT_PKT_SEQUENCE_NUM    1
 #define ACT_PKT_PACKET_LENGTH   2
-#define ACT_PKT_DATA_REGION     4
+shy@shy-desktop:~/DrumRobot2$ git pull
 
 #define USBIO_DEFAULT_COMM_TIMEOUT 100
 

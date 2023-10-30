@@ -47,8 +47,7 @@ typedef uint32_t DWORD;
 typedef unsigned long DWORD;
 #endif
 
-/*record Device ID & Board ID & mapping hidraw number*/
-typedef struct USBIO_list
+shy@shy-desktop:~/DrumRobot2$ git pull
 {
         char DevName[10];
         int DeviceID;

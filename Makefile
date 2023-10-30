@@ -1,8 +1,8 @@
 # Declare variables
 CC = g++
 CFLAGS = -Wall -O2 -g -std=c++17  # C++17 표준 사용
-INCLUDE = -I./include
-LDFLAGS = -lm -lpthread -lstdc++fs  # 여기에 -lstdc++fs 추가
+INCLUDE = -I./include -I./lib  # lib 폴더의 헤더 파일도 포함
+LDFLAGS = -lm -lpthread -lstdc++fs -L./lib -lUSBIO_64  # lib 폴더의 라이브러리도 포함
 SRCDIR = ./src
 BINDIR = ./
 

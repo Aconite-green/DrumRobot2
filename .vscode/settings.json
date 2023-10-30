@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "thread": "cpp",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -8,19 +9,16 @@
         "chrono": "cpp",
         "clocale": "cpp",
         "cmath": "cpp",
-        "codecvt": "cpp",
         "condition_variable": "cpp",
         "cstdarg": "cpp",
         "cstddef": "cpp",
         "cstdint": "cpp",
         "cstdio": "cpp",
         "cstdlib": "cpp",
-        "cstring": "cpp",
         "ctime": "cpp",
         "cwchar": "cpp",
         "cwctype": "cpp",
         "deque": "cpp",
-        "map": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
         "exception": "cpp",
@@ -41,7 +39,6 @@
         "utility": "cpp",
         "fstream": "cpp",
         "initializer_list": "cpp",
-        "iomanip": "cpp",
         "iosfwd": "cpp",
         "iostream": "cpp",
         "istream": "cpp",
@@ -52,8 +49,18 @@
         "sstream": "cpp",
         "stdexcept": "cpp",
         "streambuf": "cpp",
-        "thread": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "map": "cpp",
+        "iomanip": "cpp",
+        "cstring": "cpp",
+        "filesystem": "cpp",
+        "codecvt": "cpp"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/syp/DrumRobot2",
+            "binaryPath": "/home/syp/DrumRobot2.0/main.out",
+            "binaryArgs": []
+        }
+    ]
 }
