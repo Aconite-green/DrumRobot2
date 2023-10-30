@@ -17,6 +17,9 @@
 #include <iomanip>
 #include <filesystem>
 #include <iostream>
+#include <vector>
+#include <limits>
+#include <time.h>
 #include <fstream>
 #include <mutex>
 #include <atomic>
@@ -27,12 +30,12 @@
 #define Terminate 2
 #define Resume 0
 
+using namespace std;
+
 queue<can_frame> sendBuffer;
 queue<can_frame> recieveBuffer;
 queue<int> sensorBuffer;
 atomic<int> state(0);
-
-using namespace std;
 
 class Task
 {
@@ -59,13 +62,15 @@ private:
     std::mutex sendMutex;
     std::condition_variable sendCV;
 
+
     // DeactivateTask/ActivateTask
     void ActivateControlTask();
     void DeactivateControlTask();
 
+
     // Functions for Testing
     const int Tdegree_180 = M_PI;
-    const int Tdegree_180 = M_PI / 2;
+    const int Tdegree_90 = M_PI / 2;
     const int Mdegree_180 = 2048 * 35;
     const int Mdegree_90 = 1024 * 35;
 
@@ -73,13 +78,39 @@ private:
     void TuningLoopTask();
     void PeriodicMotionTester(queue<can_frame> &sendBuffer);
 
+
     // Functions for DrumRobot PathGenerating
+    vector<double> c_MotorAngle;
+    vector<vector<double>> right_inst;
+    vector<vector<double>> left_inst;
+
+    int bpm = 80;
+    vector<double> time_arr;
+	vector<vector<int>> RA, LA;
+	vector<int> RF, LF;
+
+    double theta0_standby = 0;
+	double theta1_standby = M_PI / 2;
+	double theta2_standby = M_PI / 2;
+	double theta3_standby = M_PI / 6;
+	double theta4_standby = 2 * M_PI / 3;
+	double theta5_standby = M_PI / 6;
+	double theta6_standby = 2 * M_PI / 3;
+
+	vector<double> standby = {theta0_standby, theta1_standby, theta2_standby, theta3_standby, theta4_standby, theta5_standby, theta6_standby};
+
+    struct can_frame frame;
+    
+    void GetMusicSheet();
+    void GetReadyArr();
     void PathLoopTask(queue<can_frame> &sendBuffer);
+
 
     // Functions for SendLoop
     template <typename MotorMap>
     void writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer,const std::map<std::string, int> &sockets);
     void SendLoopTask(queue<can_frame> &sendBuffer);
+
 
     // Functions for RecieveLoop
     const int NUM_FRAMES = 100;
@@ -89,6 +120,7 @@ private:
     void checkUserInput();
     void RecieveLoopTask(queue<can_frame> &recieveBuffer);
     void handleSocketRead(int socket_descriptor, int motor_count, queue<can_frame> &recieveBuffer);
+
 
     // Funtions for SensorLoop
     void SensorLoopTask(queue<int> &seonsorBuffer);
