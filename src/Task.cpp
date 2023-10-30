@@ -1118,6 +1118,10 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                 PathLoopTask(sendBuffer);
                 line++;
             }
+            else if (sendBuffer.size() == 0)
+            {
+                state = Terminate;
+            }
         }
 
         clock_t internal = clock();
@@ -1150,6 +1154,8 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                     std::cerr << "Socket not found for interface: " << maxonMotors.begin()->second->interFaceName << std::endl;
                 }
             }
+
+            
         }
     }
 }
