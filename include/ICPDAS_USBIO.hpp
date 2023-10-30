@@ -20,7 +20,7 @@
  **********************************************************************/
 
 /* Linux */
-#include "USBIO_Device.h"
+#include "USBIO_Device.hpp"
 #include <linux/types.h>
 #include <linux/input.h>
 #include <linux/hidraw.h>
@@ -47,7 +47,8 @@ typedef uint32_t DWORD;
 typedef unsigned long DWORD;
 #endif
 
-shy@shy-desktop:~/DrumRobot2$ git pull
+/*record Device ID & Board ID & mapping hidraw number*/
+typedef struct USBIO_list
 {
         char DevName[10];
         int DeviceID;

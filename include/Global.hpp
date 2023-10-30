@@ -15,8 +15,8 @@
  *
  **********************************************************************/
 
-#include "ICPDAS_USBIO.h"
-#include "USBIO_Object_Layout.h"
+#include "ICPDAS_USBIO.hpp"
+#include "USBIO_Object_Layout.hpp"
 
 #ifndef SUCCESS
 #define SUCCESS 0

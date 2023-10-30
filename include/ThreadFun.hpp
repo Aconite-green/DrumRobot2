@@ -10,8 +10,8 @@
  *
  **********************************************************************/
 
-#include "Global.h"
-#include "USBIO_Comm.h"
+#include "Global.hpp"
+#include "USBIO_Comm.hpp"
 
 typedef struct receivethread {
 	int DevIdx;

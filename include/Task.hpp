@@ -35,7 +35,7 @@ using namespace std;
 queue<can_frame> sendBuffer;
 queue<can_frame> recieveBuffer;
 queue<int> sensorBuffer;
-atomic<int> state(0);
+atomic<int> state(0); //0 : resume / 1 : pause / 2 : Stop
 
 class Task
 {
@@ -123,5 +123,5 @@ private:
 
 
     // Funtions for SensorLoop
-    void SensorLoopTask(queue<int> &seonsorBuffer);
+    void SensorLoopTask();
 };

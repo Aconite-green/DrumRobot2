@@ -1128,6 +1128,10 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
             continue;
         }
 
+        if(sendBuffer.size() <= 10){
+            
+        }
+
         clock_t internal = clock();
         double elapsed_time = ((double)(internal - external)) / CLOCKS_PER_SEC * 1000;
 
@@ -1276,4 +1280,12 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
             }
         }
     }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions for SensorLoop
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Task::SensorLoopTask(){
+//여기다 선배님아 
 }
