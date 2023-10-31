@@ -19,6 +19,8 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
+    SensorActivate();
+
     std::string userInput;
     while (true)
     {
@@ -84,6 +86,7 @@ void Task::operator()()
         }
     }
     DeactivateControlTask();
+    SensorDeactivate();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1165,6 +1168,13 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                     std::cerr << "Socket not found for interface: " << maxonMotors.begin()->second->interFaceName << std::endl;
                 }
             }
+
+            if (Task::SensorLoopTask())
+            {
+                state = Pause;
+                std::cout << "Paused By Sensor"
+                          << "\n";
+            };
         }
     }
 
@@ -1282,50 +1292,26 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 // Functions for SensorLoop
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Task::SensorLoopTask()
+int Task::SensorLoopTask()
 {
-    int res, DevNum, i;
-    int DeviceID = USB2051_32;
-    // int DeviceID = USB2026;
-    BYTE BoardID = 2;
-    BYTE total_di;
-    char module_name[15];
-    DWORD DIValue, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
+    int i;
 
-    printf("USB I/O Library Version : %s\n", USBIO_GetLibraryVersion());
+    // printf("Press ESC to exit.\n\n");
 
-    res = USBIO_OpenDevice(DeviceID, BoardID, &DevNum);
+    USBIO_DI_ReadValue(DevNum, &DIValue);
 
-    if (res)
-    {
-        printf("open Device failed! Erro : 0x%x\r\n", res);
-    }
-
-    printf("Demo usbio_di DevNum = %d\n", DevNum);
-
-    USBIO_ModuleName(DevNum, module_name);
-
-    USBIO_GetDITotal(DevNum, &total_di);
-    printf("%s DI number: %d\n\n", module_name, total_di);
-
-    while (1)
-    {
-        // printf("Press ESC to exit.\n\n");
-
-        USBIO_DI_ReadValue(DevNum, &DIValue);
-
-        /*
-        if (DIValue)
-                printf("Ch%2d DI  On   ", 0);
-        else
-            printf("Ch%2d DI Off   ", 0);
-        */
+    /*
+    if (DIValue)
+            printf("Ch%2d DI  On   ", 0);
+    else
+        printf("Ch%2d DI Off   ", 0);
+    */
 
         for (i = 0; i < 8; i++)     // 센서 8개 중 1개라도 인식되면 모터 일시정지
         {
             if ((DIValue >> i) & 1){
                 printf("Ch%2d DI  On   ", i);
-
+                
             }
         }
 
@@ -1343,7 +1329,7 @@ void Task::SensorLoopTask()
                 printf("\n");
         }
         */
-    }
+    
     res = USBIO_CloseDevice(DevNum);
 
     if (res)
