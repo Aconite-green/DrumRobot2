@@ -19,7 +19,8 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
-    SensorActivate();
+    GetReadyArr();
+    std::cout << "Buffersize : " << sendBuffer.size() << "\n";
 
     std::string userInput;
     while (true)
@@ -86,7 +87,6 @@ void Task::operator()()
         }
     }
     DeactivateControlTask();
-    SensorDeactivate();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1169,12 +1169,12 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                 }
             }
 
-            if (Task::SensorLoopTask())
+            /*if (Task::SensorLoopTask())
             {
                 state = Pause;
                 std::cout << "Paused By Sensor"
                           << "\n";
-            };
+            };*/
         }
     }
 
@@ -1261,7 +1261,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 
     initializeMotorCounts(motor_count_per_port);
 
-    while (true)
+    while (state.load()!=Terminate)
     {
         checkUserInput();
 
@@ -1336,4 +1336,6 @@ int Task::SensorLoopTask()
     {
         printf("close %s with Board iD %d failed! Erro : %d\r\n", module_name, BoardID, res);
     }
+
+    return 0;
 }

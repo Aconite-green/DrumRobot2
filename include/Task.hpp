@@ -139,6 +139,4 @@ private:
     DWORD DIValue, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
 
     int SensorLoopTask();
-    void SensorActivate();
-    void SensorDeactivate();
 };
