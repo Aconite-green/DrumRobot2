@@ -132,14 +132,13 @@ private:
     // Funtions for SensorLoop
 
     int DeviceID = USB2051_32;
-    BYTE BoardID = 2;
+    BYTE BoardID = 0x2;
     BYTE total_di;
     int DevNum, res ;
     char module_name[15];
-    DWORD DIValue, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
+    DWORD DIValue = 0, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
 
-    int SensorLoopTask();
-    void SensorActivate();
-    void SensorDeactivate();
+    void SensorLoopTask(queue<int> &sensorBuffer);
+   
 
 };

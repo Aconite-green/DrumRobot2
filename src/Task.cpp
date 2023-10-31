@@ -38,6 +38,7 @@ void Task::operator()()
         if (userInput == "exit")
         {
             break;
+            state = Terminate;
         }
         else if (userInput == "run")
         {
@@ -51,7 +52,9 @@ void Task::operator()()
 
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
             std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
+            std::thread sensorThread(&Task::SensorLoopTask, this, std::ref(sensorBuffer));
 
+            sensorThread.join();
             sendThread.join();
             readThread.join();
 
@@ -941,7 +944,8 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     vector<vector<double>> Q(2, vector<double>(7, 0));
 
-    for(int i=0; i<7; i++){
+    for (int i = 0; i < 7; i++)
+    {
         cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
     }
 
@@ -962,8 +966,8 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         }
     }
 
-    //int Time = 0;
-    //clock_t start = clock();
+    // int Time = 0;
+    // clock_t start = clock();
 
     if (c_R == 0 && c_L == 0)
     { // 왼손 & 오른손 안침
@@ -1044,8 +1048,8 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     c_MotorAngle = Qi;
 
-    //Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
-    //cout << "TIME : " << Time << "ms\n";
+    // Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
+    // cout << "TIME : " << Time << "ms\n";
 }
 
 void Task::GetBackArr()
@@ -1168,13 +1172,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                     std::cerr << "Socket not found for interface: " << maxonMotors.begin()->second->interFaceName << std::endl;
                 }
             }
-
-            /*if (Task::SensorLoopTask())
-            {
-                state = Pause;
-                std::cout << "Paused By Sensor"
-                          << "\n";
-            };*/
         }
     }
 
@@ -1261,7 +1258,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 
     initializeMotorCounts(motor_count_per_port);
 
-    while (state.load()!=Terminate)
+    while (state.load() != Terminate)
     {
         checkUserInput();
 
@@ -1292,42 +1289,64 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 // Functions for SensorLoop
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-int Task::SensorLoopTask()
+void Task::SensorLoopTask(queue<int> &sensorBuffer)
 {
+    printf("USB I/O Library Version : %s\n", USBIO_GetLibraryVersion());
     int i;
-
-    USBIO_DI_ReadValue(DevNum, &DIValue);
-
-    for (i = 0; i < 8; i++)     // 센서 8개 중 1개라도 인식되면 모터 일시정지
-    {
-        if ((DIValue >> i) & 1){
-            printf("Ch%2d DI  On\n", i);
-            
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-void Task::SensorActivate()
-{
     res = USBIO_OpenDevice(DeviceID, BoardID, &DevNum);
 
-	if(res)
-	{
-		printf("open /dev/hidraw%d failed! Erro: %d\r\n",DevNum,res);
-	}
+    if (res)
+    {
+        printf("open Device failed! Erro : 0x%x\r\n", res);
+    }
 
     printf("Demo usbio_di DevNum = %d\n", DevNum);
-	USBIO_ModuleName(DevNum, module_name);
 
-	USBIO_GetDITotal(DevNum, &total_di);
-	printf("%s DI number: %d\n\n",module_name, total_di);
-}
+    USBIO_ModuleName(DevNum, module_name);
 
-void Task::SensorDeactivate()
-{
+    USBIO_GetDITotal(DevNum, &total_di);
+    printf("%s DI number: %d\n\n", module_name, total_di);
+
+    while (state.load() != Terminate)
+    {
+        // printf("Press ESC to exit.\n\n");
+
+        USBIO_DI_ReadValue(DevNum, &DIValue);
+        printf("%x\n", DIValue);
+
+        for (i = 0; i < 1; i++)
+        {
+            if ((DIValue >> i) & 1)
+            {
+                printf("Ch%2d DI  On   ", i);
+                state = Pause;
+            }
+            else
+                printf("Ch%2d DI Off   ", i);
+
+            if (i % 4 == 3)
+                printf("\n");
+        }
+
+        if(state.load() == Pause){
+            continue;
+        }
+
+        printf("\n");
+
+        // printf("Each DI channel counter value:\n");
+        // USBIO_DI_ReadCounterValue(DevNum, o_dwDICntValue);
+
+        /*
+        for (i = 0; i < total_di; i++)
+        {
+            printf("CH%2d  %11u   ", i, o_dwDICntValue[i]);
+
+            if (i % 8 == 7)
+                printf("\n");
+        }
+        */
+    }
     res = USBIO_CloseDevice(DevNum);
 
     if (res)
