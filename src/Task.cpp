@@ -1296,46 +1296,42 @@ int Task::SensorLoopTask()
 {
     int i;
 
-    // printf("Press ESC to exit.\n\n");
-
     USBIO_DI_ReadValue(DevNum, &DIValue);
 
-    /*
-    if (DIValue)
-            printf("Ch%2d DI  On   ", 0);
-    else
-        printf("Ch%2d DI Off   ", 0);
-    */
-
-        for (i = 0; i < 8; i++)     // 센서 8개 중 1개라도 인식되면 모터 일시정지
-        {
-            if ((DIValue >> i) & 1){
-                printf("Ch%2d DI  On   ", i);
-                
-            }
+    for (i = 0; i < 8; i++)     // 센서 8개 중 1개라도 인식되면 모터 일시정지
+    {
+        if ((DIValue >> i) & 1){
+            printf("Ch%2d DI  On\n", i);
+            
+            return 1;
         }
+    }
 
-        printf("\n");
+    return 0;
+}
 
-        // printf("Each DI channel counter value:\n");
-        USBIO_DI_ReadCounterValue(DevNum, o_dwDICntValue);
+void Task::SensorActivate()
+{
+    res = USBIO_OpenDevice(DeviceID, BoardID, &DevNum);
 
-        /*
-        for (i = 0; i < total_di; i++)
-        {
-            printf("CH%2d  %11u   ", i, o_dwDICntValue[i]);
+	if(res)
+	{
+		printf("open /dev/hidraw%d failed! Erro: %d\r\n",DevNum,res);
+	}
 
-            if (i % 8 == 7)
-                printf("\n");
-        }
-        */
-    
+    printf("Demo usbio_di DevNum = %d\n", DevNum);
+	USBIO_ModuleName(DevNum, module_name);
+
+	USBIO_GetDITotal(DevNum, &total_di);
+	printf("%s DI number: %d\n\n",module_name, total_di);
+}
+
+void Task::SensorDeactivate()
+{
     res = USBIO_CloseDevice(DevNum);
 
     if (res)
     {
         printf("close %s with Board iD %d failed! Erro : %d\r\n", module_name, BoardID, res);
     }
-
-    return 0;
 }
