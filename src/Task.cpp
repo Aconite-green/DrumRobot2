@@ -938,6 +938,10 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     vector<vector<double>> Q(2, vector<double>(7, 0));
 
+    for(int i=0; i<7; i++){
+        cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
+    }
+
     c_R = 0;
     c_L = 0;
 
@@ -955,8 +959,8 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         }
     }
 
-    int Time = 0;
-    clock_t start = clock();
+    //int Time = 0;
+    //clock_t start = clock();
 
     if (c_R == 0 && c_L == 0)
     { // 왼손 & 오른손 안침
@@ -1037,8 +1041,8 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     c_MotorAngle = Qi;
 
-    Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
-    cout << "TIME : " << Time << "ms\n";
+    //Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
+    //cout << "TIME : " << Time << "ms\n";
 }
 
 void Task::GetBackArr()
@@ -1118,7 +1122,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
         if (sendBuffer.size() <= 10)
         {
-            std::cout << "current line :" << line << "end :" << end << "\n";
+            std::cout << "current line :" << line << ", end :" << end << "\n";
             if (line < end)
             {
                 PathLoopTask(sendBuffer);
@@ -1321,7 +1325,7 @@ void Task::SensorLoopTask()
         {
             if ((DIValue >> i) & 1){
                 printf("Ch%2d DI  On   ", i);
-                
+
             }
         }
 

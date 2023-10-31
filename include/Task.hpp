@@ -69,7 +69,7 @@ private:
     void PeriodicMotionTester(queue<can_frame> &sendBuffer);
 
     // Functions for DrumRobot PathGenerating
-    vector<double> c_MotorAngle;
+    vector<double> c_MotorAngle = {0, M_PI / 2, M_PI / 2, 0, 0, 0, 0};
     vector<vector<double>> right_inst;
     vector<vector<double>> left_inst;
 
@@ -78,15 +78,7 @@ private:
     vector<vector<int>> RA, LA;
     vector<int> RF, LF;
 
-    double theta0_standby = 0;
-    double theta1_standby = M_PI / 2;
-    double theta2_standby = M_PI / 2;
-    double theta3_standby = M_PI / 6;
-    double theta4_standby = 2 * M_PI / 3;
-    double theta5_standby = M_PI / 6;
-    double theta6_standby = 2 * M_PI / 3;
-
-    vector<double> standby = {theta0_standby, theta1_standby, theta2_standby, theta3_standby, theta4_standby, theta5_standby, theta6_standby};
+    vector<double> standby = {0, M_PI / 2, M_PI / 2, M_PI / 6, 2 * M_PI / 3, M_PI / 6, 2 * M_PI / 3};
 
     int end = 0;
     int line = 0;
@@ -112,6 +104,7 @@ private:
     vector<double> R = {0.500, 0.400, 0.500, 0.400};
     double s = 0.600;
     double z0 = 0.000;
+
     vector<vector<double>> q;
 
     string trimWhitespace(const std::string &str);
