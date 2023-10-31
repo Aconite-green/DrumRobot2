@@ -136,5 +136,7 @@ private:
     void handleSocketRead(int socket_descriptor, int motor_count, queue<can_frame> &recieveBuffer);
 
     // Funtions for SensorLoop
+
     void SensorLoopTask();
+    void SensorInitialization();
 };
