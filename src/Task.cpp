@@ -3,14 +3,12 @@
 Task::Task(map<string, shared_ptr<TMotor>> &tmotors_input,
            map<string, shared_ptr<MaxonMotor>> &maxonMotors_input,
            const map<string, int> &sockets_input)
-    : tmotors(tmotors_input), 
+    : tmotors(tmotors_input),
       maxonMotors(maxonMotors_input),
       sockets(sockets_input)
 {
     state = 0;
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for Loops Managing
@@ -20,6 +18,7 @@ void Task::operator()()
 {
     // Begin Operation
     ActivateControlTask();
+    GetMusicSheet();
     std::string userInput;
     while (true)
     {
@@ -47,11 +46,9 @@ void Task::operator()()
 
             std::cout << "Performing ...... \n";
 
-            std::thread pathThread(&Task::PathLoopTask, this, std::ref(sendBuffer));
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
             std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
 
-            pathThread.join();
             sendThread.join();
             readThread.join();
 
@@ -595,7 +592,7 @@ void Task::PeriodicMotionTester(queue<can_frame> &sendBuffer)
 // Functions for DrumRobot PathGenerating
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-string trimWhitespace(const std::string &str)
+string Task::trimWhitespace(const std::string &str)
 {
     size_t first = str.find_first_not_of(" \t");
     if (std::string::npos == first)
@@ -606,7 +603,7 @@ string trimWhitespace(const std::string &str)
     return str.substr(first, (last - first + 1));
 }
 
-vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n)
+vector<double> Task::connect(vector<double> &Q1, vector<double> &Q2, int k, int n)
 {
     vector<double> Qi;
     std::vector<double> A, B;
@@ -629,7 +626,7 @@ vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n)
     return Qi;
 }
 
-vector<double> IKfun(vector<double> &P1, vector<double> &P2, vector<double> &R, double s, double z0)
+vector<double> Task::IKfun(vector<double> &P1, vector<double> &P2, vector<double> &R, double s, double z0)
 {
     vector<double> Qf;
 
@@ -902,10 +899,14 @@ void Task::GetMusicSheet()
     }
 
     file.close();
+
+    end = RF.size();
 }
 
 void Task::GetReadyArr()
 {
+    struct can_frame frame;
+
     vector<double> Q0(7, 0);
     vector<vector<double>> q_ready;
 
@@ -933,6 +934,8 @@ void Task::GetReadyArr()
 
 void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 {
+    struct can_frame frame;
+
     vector<vector<double>> Q(2, vector<double>(7, 0));
 
     c_R = 0;
@@ -1002,7 +1005,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Qi = connect(c_MotorAngle, Q[0], k, n);
         q.push_back(Qi);
 
-        int j = 0; // motor num
+        int j = 0;
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
@@ -1036,18 +1039,19 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     Time += ((int)clock() - start) / (CLOCKS_PER_SEC / 1000);
     cout << "TIME : " << Time << "ms\n";
-
 }
 
 void Task::GetBackArr()
 {
-    vector<double> Q0(7, 0);
-	vector<vector<double>> q_finish;
+    struct can_frame frame;
 
-	//// 끝나는자세 배열 생성
-	vector<double> Qi;
-	int n = 800;
-	for (int k = 0; k < n; ++k)
+    vector<double> Q0(7, 0);
+    vector<vector<double>> q_finish;
+
+    //// 끝나는자세 배열 생성
+    vector<double> Qi;
+    int n = 800;
+    for (int k = 0; k < n; ++k)
     {
         Qi = connect(c_MotorAngle, Q0, k, n);
         q_finish.push_back(Qi);
@@ -1114,8 +1118,11 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
         if (sendBuffer.size() <= 10)
         {
-            if(line < end){
+            std::cout << "current line :" << line << "end :" << end << "\n";
+            if (line < end)
+            {
                 PathLoopTask(sendBuffer);
+                std::cout << sendBuffer.size() << "\n";
                 line++;
             }
             else if (sendBuffer.size() == 0)
@@ -1154,10 +1161,10 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                     std::cerr << "Socket not found for interface: " << maxonMotors.begin()->second->interFaceName << std::endl;
                 }
             }
-
-            
         }
     }
+
+    std::cout << "SendLoop terminated\n";
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1203,10 +1210,10 @@ void Task::initializeMotorCounts(std::map<std::string, int> &motor_count_per_por
 
 void Task::handleSocketRead(int socket_descriptor, int motor_count, queue<can_frame> &recieveBuffer)
 {
-    // 스레드 로컬 저장소 사용 (C++11 이상)
-    thread_local std::vector<can_frame> readFrame(NUM_FRAMES);
 
-    ssize_t bytesRead = read(socket_descriptor, readFrame.data(), sizeof(can_frame) * NUM_FRAMES);
+    struct can_frame readFrame[NUM_FRAMES];
+
+    ssize_t bytesRead = read(socket_descriptor, &readFrame, sizeof(can_frame) * NUM_FRAMES);
     if (bytesRead == -1)
     {
         std::cerr << "Failed to read from socket." << std::endl;
@@ -1274,73 +1281,72 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 void Task::SensorLoopTask()
 {
     int res, DevNum, i;
-	int DeviceID = USB2051_32;
-	// int DeviceID = USB2026;
-	BYTE BoardID = 2;
-	BYTE total_di;
-	char module_name[15];
-	DWORD DIValue, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
+    int DeviceID = USB2051_32;
+    // int DeviceID = USB2026;
+    BYTE BoardID = 2;
+    BYTE total_di;
+    char module_name[15];
+    DWORD DIValue, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
 
-	printf("USB I/O Library Version : %s\n", USBIO_GetLibraryVersion());
+    printf("USB I/O Library Version : %s\n", USBIO_GetLibraryVersion());
 
-	res = USBIO_OpenDevice(DeviceID, BoardID, &DevNum);
+    res = USBIO_OpenDevice(DeviceID, BoardID, &DevNum);
 
-	if (res)
-	{
-		printf("open Device failed! Erro : 0x%x\r\n", res);
-	}
+    if (res)
+    {
+        printf("open Device failed! Erro : 0x%x\r\n", res);
+    }
 
-	printf("Demo usbio_di DevNum = %d\n", DevNum);
-	
-	USBIO_ModuleName(DevNum, module_name);
+    printf("Demo usbio_di DevNum = %d\n", DevNum);
 
-	USBIO_GetDITotal(DevNum, &total_di);
-	printf("%s DI number: %d\n\n", module_name, total_di);
+    USBIO_ModuleName(DevNum, module_name);
 
-	while (1)
-	{
-		//printf("Press ESC to exit.\n\n");
+    USBIO_GetDITotal(DevNum, &total_di);
+    printf("%s DI number: %d\n\n", module_name, total_di);
 
-		USBIO_DI_ReadValue(DevNum, &DIValue);
+    while (1)
+    {
+        // printf("Press ESC to exit.\n\n");
 
-		/*
-		if (DIValue)
-				printf("Ch%2d DI  On   ", 0);
-		else
-			printf("Ch%2d DI Off   ", 0);
-		*/
-		
-		for (i = 0; i < 10; i++)
-		{
-			if ((DIValue >> i) & 1)
-				printf("Ch%2d DI  On   ", i);
-			else
-				printf("Ch%2d DI Off   ", i);
-			
-			if (i % 4 == 3)
-				printf("\n");
-			
-		}		
-		
-		printf("\n");
+        USBIO_DI_ReadValue(DevNum, &DIValue);
 
-		//printf("Each DI channel counter value:\n");
-		USBIO_DI_ReadCounterValue(DevNum, o_dwDICntValue);
+        /*
+        if (DIValue)
+                printf("Ch%2d DI  On   ", 0);
+        else
+            printf("Ch%2d DI Off   ", 0);
+        */
 
-		/*
-		for (i = 0; i < total_di; i++)
-		{
-			printf("CH%2d  %11u   ", i, o_dwDICntValue[i]);
+        for (i = 0; i < 10; i++)
+        {
+            if ((DIValue >> i) & 1)
+                printf("Ch%2d DI  On   ", i);
+            else
+                printf("Ch%2d DI Off   ", i);
 
-			if (i % 8 == 7)
-				printf("\n");
-		}
-		*/
-	}
-	res = USBIO_CloseDevice(DevNum);
+            if (i % 4 == 3)
+                printf("\n");
+        }
 
-	if (res)
-	{
-		printf("close %s with Board iD %d failed! Erro : %d\r\n", module_name, BoardID, res);
-	}
+        printf("\n");
+
+        // printf("Each DI channel counter value:\n");
+        USBIO_DI_ReadCounterValue(DevNum, o_dwDICntValue);
+
+        /*
+        for (i = 0; i < total_di; i++)
+        {
+            printf("CH%2d  %11u   ", i, o_dwDICntValue[i]);
+
+            if (i % 8 == 7)
+                printf("\n");
+        }
+        */
+    }
+    res = USBIO_CloseDevice(DevNum);
+
+    if (res)
+    {
+        printf("close %s with Board iD %d failed! Erro : %d\r\n", module_name, BoardID, res);
+    }
 }

@@ -35,7 +35,7 @@ class Task
 {
 
 public:
-   // 생성자 매개변수 이름 변경 및 명확성 추가
+    // 생성자 매개변수 이름 변경 및 명확성 추가
     Task(map<string, shared_ptr<TMotor>> &input_tmotors,
          map<string, shared_ptr<MaxonMotor>> &input_maxonMotors,
          const map<string, int> &input_sockets);
@@ -88,34 +88,35 @@ private:
 
     vector<double> standby = {theta0_standby, theta1_standby, theta2_standby, theta3_standby, theta4_standby, theta5_standby, theta6_standby};
 
-    struct can_frame frame;
-
-    int end = RF.size();
+    int end = 0;
     int line = 0;
 
     double p_R = 0; // 오른손 이전 악기 유무
-	double p_L = 0; // 왼손 이전 악기 유무
-	double c_R = 0; // 오른손 현재 악기 유무
-	double c_L = 0; // 왼손 현재 악기 유무
+    double p_L = 0; // 왼손 이전 악기 유무
+    double c_R = 0; // 오른손 현재 악기 유무
+    double c_L = 0; // 왼손 현재 악기 유무
 
     /*
-	vector<double> P1 = {0.265, -0.391, -0.039837};	 // RightArm Standby
-	vector<double> P2 = {-0.265, -0.391, -0.039837}; // LeftArm Standby
-	int n_inst = 10;
+    vector<double> P1 = {0.265, -0.391, -0.039837};	 // RightArm Standby
+    vector<double> P2 = {-0.265, -0.391, -0.039837}; // LeftArm Standby
+    int n_inst = 10;
 
-	vector<double> R = {0.368, 0.414, 0.368, 0.414};
-	double s = 0.530;
-	double z0 = 0.000;
-	*/
-	vector<double> P1 = {0.3, -0.45, -0.0866};	 // RightArm Standby
-	vector<double> P2 = {-0.3, -0.45, -0.0866}; // LeftArm Standby
-	int n_inst = 10;
+    vector<double> R = {0.368, 0.414, 0.368, 0.414};
+    double s = 0.530;
+    double z0 = 0.000;
+    */
+    vector<double> P1 = {0.3, -0.45, -0.0866};  // RightArm Standby
+    vector<double> P2 = {-0.3, -0.45, -0.0866}; // LeftArm Standby
+    int n_inst = 10;
 
-	vector<double> R = {0.500, 0.400, 0.500, 0.400};
-	double s = 0.600;
-	double z0 = 0.000;
-	vector<vector<double>> q;
-    
+    vector<double> R = {0.500, 0.400, 0.500, 0.400};
+    double s = 0.600;
+    double z0 = 0.000;
+    vector<vector<double>> q;
+
+    string trimWhitespace(const std::string &str);
+    vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n);
+    vector<double> IKfun(vector<double> &P1, vector<double> &P2, vector<double> &R, double s, double z0);
     void GetMusicSheet();
     void GetReadyArr();
     void PathLoopTask(queue<can_frame> &sendBuffer);
