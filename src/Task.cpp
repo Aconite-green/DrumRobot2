@@ -1317,15 +1317,12 @@ void Task::SensorLoopTask()
             printf("Ch%2d DI Off   ", 0);
         */
 
-        for (i = 0; i < 10; i++)
+        for (i = 0; i < 8; i++)     // 센서 8개 중 1개라도 인식되면 모터 일시정지
         {
-            if ((DIValue >> i) & 1)
+            if ((DIValue >> i) & 1){
                 printf("Ch%2d DI  On   ", i);
-            else
-                printf("Ch%2d DI Off   ", i);
-
-            if (i % 4 == 3)
-                printf("\n");
+                
+            }
         }
 
         printf("\n");
