@@ -20,6 +20,7 @@ void Task::operator()()
     ActivateControlTask();
     GetMusicSheet();
     GetReadyArr();
+    std::cout << "Start Ready. \n";
     std::cout << "Buffersize : " << sendBuffer.size() << "\n";
 
     std::string userInput;
@@ -52,6 +53,7 @@ void Task::operator()()
 
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
             std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
+
             sendThread.join();
             readThread.join();
 
@@ -918,7 +920,6 @@ void Task::GetReadyArr()
 {
     struct can_frame frame;
 
-    vector<double> Q0(7, 0);
     vector<vector<double>> q_ready;
 
     //// 준비자세 배열 생성
@@ -926,10 +927,10 @@ void Task::GetReadyArr()
     int n = 800;
     for (int k = 0; k < n; ++k)
     {
-        c_MotorAngle = connect(Q0, standby, k, n);
+        c_MotorAngle = connect(c_MotorAngle, standby, k, n);
         q_ready.push_back(c_MotorAngle);
 
-        int j = 0; // motor num
+        int j = 1; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
@@ -949,10 +950,12 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     vector<vector<double>> Q(2, vector<double>(7, 0));
 
+    /*
     for (int i = 0; i < 7; i++)
     {
         cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
     }
+    */
 
     c_R = 0;
     c_L = 0;
@@ -1122,13 +1125,13 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
 void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 {
-    ActivateSensor();
+    //ActivateSensor();
     struct can_frame frameToProcess;
     clock_t external = clock();
 
     while (state.load() != Terminate)
     {
-        SensorLoopTask(sensorBuffer);
+        //SensorLoopTask(sensorBuffer);
         if (state.load() == Pause)
         {
             continue;
@@ -1136,7 +1139,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
         if (sendBuffer.size() <= 10)
         {
-            std::cout << "current line :" << line << ", end :" << end << "\n";
+            //std::cout << "current line :" << line << ", end :" << end << "\n";
             if (line < end)
             {
                 PathLoopTask(sendBuffer);
@@ -1182,7 +1185,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         }
     }
 
-    DeactivateSensor();
+    //DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
 
@@ -1309,10 +1312,7 @@ void Task::SensorLoopTask(queue<int> &sensorBuffer)
             state = Pause;
             return;
         }
-
     }
-
-    
 }
 
 void Task::ActivateSensor()

@@ -70,7 +70,7 @@ private:
     void PeriodicMotionTester(queue<can_frame> &sendBuffer);
 
     // Functions for DrumRobot PathGenerating
-    vector<double> c_MotorAngle = {0, M_PI / 2, M_PI / 2, 0, 0, 0, 0};
+    vector<double> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0};
     vector<vector<double>> right_inst;
     vector<vector<double>> left_inst;
 
