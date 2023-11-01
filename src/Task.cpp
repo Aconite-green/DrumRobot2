@@ -52,9 +52,9 @@ void Task::operator()()
 
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
             std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
-            std::thread sensorThread(&Task::SensorLoopTask, this, std::ref(sensorBuffer));
+            //std::thread sensorThread(&Task::SensorLoopTask, this, std::ref(sensorBuffer));
 
-            sensorThread.join();
+            //sensorThread.join();
             sendThread.join();
             readThread.join();
 
@@ -1117,11 +1117,13 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
 void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 {
+    ActivateSensor();
     struct can_frame frameToProcess;
     clock_t external = clock();
 
     while (state.load() != Terminate)
     {
+        SensorLoopTask(sensorBuffer);
         if (state.load() == Pause)
         {
             continue;
@@ -1175,6 +1177,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         }
     }
 
+    DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
 
@@ -1291,8 +1294,32 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 
 void Task::SensorLoopTask(queue<int> &sensorBuffer)
 {
+    USBIO_DI_ReadValue(DevNum, &DIValue);
+    printf("%x\n", DIValue);
+
+    for (int i = 0; i < 8; i++)
+    {
+        if ((DIValue >> i) & 1)
+        {
+            printf("Ch%2d DI  On   ", i);
+            state = Pause;
+            return;
+        }
+        /*
+        else
+            printf("Ch%2d DI Off   ", i);
+
+        if (i % 4 == 3)
+            printf("\n");
+        */
+    }
+
+    state = Resume;
+}
+
+void Task::ActivateSensor()
+{
     printf("USB I/O Library Version : %s\n", USBIO_GetLibraryVersion());
-    int i;
     res = USBIO_OpenDevice(DeviceID, BoardID, &DevNum);
 
     if (res)
@@ -1306,47 +1333,10 @@ void Task::SensorLoopTask(queue<int> &sensorBuffer)
 
     USBIO_GetDITotal(DevNum, &total_di);
     printf("%s DI number: %d\n\n", module_name, total_di);
+}
 
-    while (state.load() != Terminate)
-    {
-        // printf("Press ESC to exit.\n\n");
-
-        USBIO_DI_ReadValue(DevNum, &DIValue);
-        printf("%x\n", DIValue);
-
-        for (i = 0; i < 1; i++)
-        {
-            if ((DIValue >> i) & 1)
-            {
-                printf("Ch%2d DI  On   ", i);
-                state = Pause;
-            }
-            else
-                printf("Ch%2d DI Off   ", i);
-
-            if (i % 4 == 3)
-                printf("\n");
-        }
-
-        if(state.load() == Pause){
-            continue;
-        }
-
-        printf("\n");
-
-        // printf("Each DI channel counter value:\n");
-        // USBIO_DI_ReadCounterValue(DevNum, o_dwDICntValue);
-
-        /*
-        for (i = 0; i < total_di; i++)
-        {
-            printf("CH%2d  %11u   ", i, o_dwDICntValue[i]);
-
-            if (i % 8 == 7)
-                printf("\n");
-        }
-        */
-    }
+void Task::DeactivateSensor()
+{
     res = USBIO_CloseDevice(DevNum);
 
     if (res)

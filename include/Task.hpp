@@ -139,6 +139,6 @@ private:
     DWORD DIValue = 0, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
 
     void SensorLoopTask(queue<int> &sensorBuffer);
-   
-
+    void ActivateSensor();
+    void DeactivateSensor();
 };
