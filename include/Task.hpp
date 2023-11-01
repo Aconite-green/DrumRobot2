@@ -20,10 +20,11 @@
 #include <iostream>
 #include <vector>
 #include <limits>
-#include <time.h>
+#include <ctime>
 #include <fstream>
 #include <atomic>
 #include <cmath>
+#include <chrono>
 
 #define Pause 1
 #define Terminate 2
@@ -64,7 +65,7 @@ private:
     const int Mdegree_180 = 2048 * 35;
     const int Mdegree_90 = 1024 * 35;
     int temp = 0;
-
+    int val = 0;
     void Tuning(float kp, float kd, float sine_t);
     void TuningLoopTask();
     void PeriodicMotionTester(queue<can_frame> &sendBuffer);

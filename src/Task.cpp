@@ -26,11 +26,11 @@ void Task::operator()()
     std::string userInput;
     while (true)
     {
-        int result = system("clear");
+        /*int result = system("clear");
         if (result != 0)
         {
             std::cout << "error during sys function";
-        }
+        }*/
 
         std::cout << "Enter 'run','exit','test': ";
         std::cin >> userInput;
@@ -416,7 +416,7 @@ void Task::Tuning(float kp, float kd, float sine_t)
                         {
                             temp++;
                         }
-                        
+
                         ssize_t bytesRead = read(sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
 
                         if (bytesRead == -1)
@@ -441,8 +441,6 @@ void Task::Tuning(float kp, float kd, float sine_t)
         }
     }
     csvFile.close();
-    
-   
 }
 
 void Task::TuningLoopTask()
@@ -475,7 +473,7 @@ void Task::TuningLoopTask()
         std::cout << "Time for Sine period : " << sine_t << "\n";
         std::cout << "\n\n";
         std::cout << "Enter run, kp, kd, period, exit : \n";
-        cout << "temp =" <<temp <<endl;
+        cout << "temp =" << temp << endl;
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
         if (userInput == "run")
@@ -620,21 +618,21 @@ vector<double> Task::connect(vector<double> &Q1, vector<double> &Q2, int k, int 
 {
     vector<double> Qi;
     std::vector<double> A, B;
-    const double PI = 3.14159265358979;
 
     // Compute A and B
-    for (size_t i = 0; i < Q1.size(); ++i)
+    for (long unsigned int i = 0; i < Q1.size(); ++i)
     {
         A.push_back(0.5 * (Q1[i] - Q2[i]));
         B.push_back(0.5 * (Q1[i] + Q2[i]));
     }
 
     // Compute Qi using the provided formula
-    for (size_t i = 0; i < Q1.size(); ++i)
+    for (long unsigned int i = 0; i < Q1.size(); ++i)
     {
-        double val = A[i] * cos(PI * k / n) + B[i];
+        double val = A[i] * cos(M_PI * k / n) + B[i];
         Qi.push_back(val);
     }
+    cout << "n, k, " << n << ", " << k << ", " << Qi[1] << "\n";
 
     return Qi;
 }
@@ -920,17 +918,18 @@ void Task::GetReadyArr()
 {
     struct can_frame frame;
 
+    vector<double> Q0 = {0, 0, 0, 0, 0, 0, 0};
     vector<vector<double>> q_ready;
 
     //// 준비자세 배열 생성
 
     int n = 800;
-    for (int k = 0; k < n; ++k)
+    for (int k = 0; k < n; k++)
     {
-        c_MotorAngle = connect(c_MotorAngle, standby, k, n);
+        c_MotorAngle = connect(Q0, standby, k, n);
         q_ready.push_back(c_MotorAngle);
 
-        int j = 1; // motor num
+        int j = 4; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
@@ -1110,6 +1109,7 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
         {
             int socket_descriptor = sockets.at(interface_name);
             ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+
             if (bytesWritten == -1)
             {
                 std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
@@ -1125,13 +1125,13 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
 void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 {
-    //ActivateSensor();
+    // ActivateSensor();
     struct can_frame frameToProcess;
-    clock_t external = clock();
-
+    chrono::system_clock::time_point external = std::chrono::system_clock::now();
+    
     while (state.load() != Terminate)
     {
-        //SensorLoopTask(sensorBuffer);
+        // SensorLoopTask(sensorBuffer);
         if (state.load() == Pause)
         {
             continue;
@@ -1139,7 +1139,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
         if (sendBuffer.size() <= 10)
         {
-            //std::cout << "current line :" << line << ", end :" << end << "\n";
             if (line < end)
             {
                 PathLoopTask(sendBuffer);
@@ -1152,16 +1151,16 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
             }
         }
 
-        clock_t internal = clock();
-        double elapsed_time = ((double)(internal - external)) / CLOCKS_PER_SEC * 1000;
+        chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+        chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
 
-        if (elapsed_time >= 5) // 5ms
+        if (elapsed_time.count() >= 5000) // 5ms
         {
-
-            external = clock();
+            external = std::chrono::system_clock::now();
 
             Task::writeToSocket(tmotors, sendBuffer, sockets);
-
+            temp++;
+            
             if (!maxonMotors.empty())
             {
                 Task::writeToSocket(maxonMotors, sendBuffer, sockets);
@@ -1175,7 +1174,8 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                 {
                     int socket_descriptor_for_sync = it->second;
                     ssize_t bytesWritten = write(socket_descriptor_for_sync, &frameToProcess, sizeof(struct can_frame));
-                    handleError(bytesWritten, maxonMotors.begin()->second->interFaceName);
+
+                    // handleError(bytesWritten, maxonMotors.begin()->second->interFaceName);
                 }
                 else
                 {
@@ -1185,7 +1185,8 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         }
     }
 
-    //DeactivateSensor();
+    
+    // DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
 
@@ -1251,7 +1252,7 @@ void Task::handleSocketRead(int socket_descriptor, int motor_count, queue<can_fr
 
 void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 {
-    clock_t external = clock();
+    chrono::system_clock::time_point external = std::chrono::system_clock::now();
 
     std::map<std::string, int> motor_count_per_port;
 
@@ -1278,11 +1279,11 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
             continue;
         }
 
-        clock_t internal = clock();
-        double elapsed_time = ((double)(internal - external)) / CLOCKS_PER_SEC * 1000;
-        if (elapsed_time >= TIME_THRESHOLD_MS)
+        chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+        chrono::milliseconds elapsed_time = chrono::duration_cast<chrono::milliseconds>(internal - external);
+        if (elapsed_time.count() >= TIME_THRESHOLD_MS)
         {
-            external = clock();
+            external = std::chrono::system_clock::now();
             for (const auto &socket_pair : sockets)
             {
                 int socket_descriptor = socket_pair.second;
@@ -1303,7 +1304,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 void Task::SensorLoopTask(queue<int> &sensorBuffer)
 {
     USBIO_DI_ReadValue(DevNum, &DIValue);
-    
+
     for (int i = 0; i < 8; i++)
     {
         if ((DIValue >> i) & 1)
