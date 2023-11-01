@@ -52,9 +52,6 @@ void Task::operator()()
 
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
             std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
-            //std::thread sensorThread(&Task::SensorLoopTask, this, std::ref(sensorBuffer));
-
-            //sensorThread.join();
             sendThread.join();
             readThread.join();
 
@@ -413,6 +410,11 @@ void Task::Tuning(float kp, float kd, float sine_t)
                             std::cerr << "Failed to write to socket for interface: " << motor->interFaceName << std::endl;
                             std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
                         }
+                        else
+                        {
+                            temp++;
+                        }
+                        
                         ssize_t bytesRead = read(sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
 
                         if (bytesRead == -1)
@@ -437,6 +439,8 @@ void Task::Tuning(float kp, float kd, float sine_t)
         }
     }
     csvFile.close();
+    
+   
 }
 
 void Task::TuningLoopTask()
@@ -469,6 +473,7 @@ void Task::TuningLoopTask()
         std::cout << "Time for Sine period : " << sine_t << "\n";
         std::cout << "\n\n";
         std::cout << "Enter run, kp, kd, period, exit : \n";
+        cout << "temp =" <<temp <<endl;
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
         if (userInput == "run")
@@ -1295,8 +1300,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 void Task::SensorLoopTask(queue<int> &sensorBuffer)
 {
     USBIO_DI_ReadValue(DevNum, &DIValue);
-    printf("%x\n", DIValue);
-
+    
     for (int i = 0; i < 8; i++)
     {
         if ((DIValue >> i) & 1)
@@ -1305,16 +1309,10 @@ void Task::SensorLoopTask(queue<int> &sensorBuffer)
             state = Pause;
             return;
         }
-        /*
-        else
-            printf("Ch%2d DI Off   ", i);
 
-        if (i % 4 == 3)
-            printf("\n");
-        */
     }
 
-    state = Resume;
+    
 }
 
 void Task::ActivateSensor()

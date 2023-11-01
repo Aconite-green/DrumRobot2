@@ -63,6 +63,7 @@ private:
     const int Tdegree_90 = M_PI / 2;
     const int Mdegree_180 = 2048 * 35;
     const int Mdegree_90 = 1024 * 35;
+    int temp = 0;
 
     void Tuning(float kp, float kd, float sine_t);
     void TuningLoopTask();
