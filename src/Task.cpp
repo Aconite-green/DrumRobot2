@@ -1309,19 +1309,23 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 
 void Task::SensorLoopTask(queue<int> &sensorBuffer)
 {
+    chrono::system_clock::time_point ex = std::chrono::system_clock::now();
     USBIO_DI_ReadValue(DevNum, &DIValue);
 
     for (int i = 0; i < 8; i++)
     {
         if ((DIValue >> i) & 1)
         {
-            printf("Ch%2d DI  On   ", i);
+            printf("Ch%2d DI  On   \n", i);
             state = Pause;
             return;
         }
     }
 
-    state = Resume;
+    chrono::system_clock::time_point in = std::chrono::system_clock::now();
+    chrono::milliseconds SensorTerm = chrono::duration_cast<chrono::milliseconds>(in - ex);
+
+    cout << "Sensor Term : " << SensorTerm.count() << "\n";
 }
 
 void Task::ActivateSensor()
