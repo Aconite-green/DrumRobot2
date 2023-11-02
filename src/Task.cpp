@@ -632,7 +632,6 @@ vector<double> Task::connect(vector<double> &Q1, vector<double> &Q2, int k, int 
         double val = A[i] * cos(M_PI * k / n) + B[i];
         Qi.push_back(val);
     }
-    cout << "n, k, " << n << ", " << k << ", " << Qi[1] << "\n";
 
     return Qi;
 }
@@ -949,12 +948,12 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     vector<vector<double>> Q(2, vector<double>(7, 0));
 
-    /*
+    
     for (int i = 0; i < 7; i++)
     {
         cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
     }
-    */
+    
 
     c_R = 0;
     c_L = 0;
@@ -1023,7 +1022,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Qi = connect(c_MotorAngle, Q[0], k, n);
         q.push_back(Qi);
 
-        int j = 0;
+        int j = 4;
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
@@ -1040,7 +1039,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Qi = connect(Q[0], Q[1], k, n);
         q.push_back(Qi);
 
-        int j = 0; // motor num
+        int j = 4; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
@@ -1074,7 +1073,7 @@ void Task::GetBackArr()
         Qi = connect(c_MotorAngle, Q0, k, n);
         q_finish.push_back(Qi);
 
-        int j = 0; // motor num
+        int j = 4; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
@@ -1125,13 +1124,13 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
 void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 {
-    // ActivateSensor();
+    ActivateSensor();
     struct can_frame frameToProcess;
     chrono::system_clock::time_point external = std::chrono::system_clock::now();
     
     while (state.load() != Terminate)
     {
-        // SensorLoopTask(sensorBuffer);
+        SensorLoopTask(sensorBuffer);
         if (state.load() == Pause)
         {
             continue;
@@ -1141,13 +1140,21 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         {
             if (line < end)
             {
+                cout << "line : " << line << ", end : " << end << "\n";
                 PathLoopTask(sendBuffer);
                 std::cout << sendBuffer.size() << "\n";
+                line++;
+            }
+            else if(line == end)
+            {
+                cout << "Turn Back\n";
+                GetBackArr();
                 line++;
             }
             else if (sendBuffer.size() == 0)
             {
                 state = Terminate;
+                cout << "Performance is Over\n";
             }
         }
 
@@ -1159,7 +1166,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
             external = std::chrono::system_clock::now();
 
             Task::writeToSocket(tmotors, sendBuffer, sockets);
-            temp++;
             
             if (!maxonMotors.empty())
             {
@@ -1186,7 +1192,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     }
 
     
-    // DeactivateSensor();
+    DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
 
@@ -1314,6 +1320,8 @@ void Task::SensorLoopTask(queue<int> &sensorBuffer)
             return;
         }
     }
+
+    state = Resume;
 }
 
 void Task::ActivateSensor()
