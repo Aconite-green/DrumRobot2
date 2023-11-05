@@ -948,12 +948,10 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     vector<vector<double>> Q(2, vector<double>(7, 0));
 
-    
     for (int i = 0; i < 7; i++)
     {
         cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
     }
-    
 
     c_R = 0;
     c_L = 0;
@@ -1127,7 +1125,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     ActivateSensor();
     struct can_frame frameToProcess;
     chrono::system_clock::time_point external = std::chrono::system_clock::now();
-    
+
     while (state.load() != Terminate)
     {
         SensorLoopTask(sensorBuffer);
@@ -1145,7 +1143,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                 std::cout << sendBuffer.size() << "\n";
                 line++;
             }
-            else if(line == end)
+            else if (line == end)
             {
                 cout << "Turn Back\n";
                 GetBackArr();
@@ -1166,7 +1164,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
             external = std::chrono::system_clock::now();
 
             Task::writeToSocket(tmotors, sendBuffer, sockets);
-            
+
             if (!maxonMotors.empty())
             {
                 Task::writeToSocket(maxonMotors, sendBuffer, sockets);
@@ -1191,7 +1189,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         }
     }
 
-    
     DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
@@ -1309,7 +1306,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
 
 void Task::SensorLoopTask(queue<int> &sensorBuffer)
 {
-    chrono::system_clock::time_point ex = std::chrono::system_clock::now();
+
     USBIO_DI_ReadValue(DevNum, &DIValue);
 
     for (int i = 0; i < 8; i++)
@@ -1321,11 +1318,6 @@ void Task::SensorLoopTask(queue<int> &sensorBuffer)
             return;
         }
     }
-
-    chrono::system_clock::time_point in = std::chrono::system_clock::now();
-    chrono::milliseconds SensorTerm = chrono::duration_cast<chrono::milliseconds>(in - ex);
-
-    cout << "Sensor Term : " << SensorTerm.count() << "\n";
 }
 
 void Task::ActivateSensor()
@@ -1354,4 +1346,126 @@ void Task::DeactivateSensor()
     {
         printf("close %s with Board iD %d failed! Erro : %d\r\n", module_name, BoardID, res);
     }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions for Homing Mode
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Task::CheckCurrentPosition(const std::map<std::string, int> &sockets)
+{
+    struct can_frame frameToProcess;
+
+    for (auto &motor_pair : tmotors)
+    {
+        std::shared_ptr<TMotor> &motor = motor_pair.second;
+        auto interface_name = motor->interFaceName;
+
+        // 상태 확인
+        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
+        if (sockets.find(interface_name) != sockets.end())
+        {
+            int socket_descriptor = sockets.at(interface_name);
+            ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+
+            if (bytesWritten == -1)
+            {
+                std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
+                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+            }
+
+            ssize_t bytesRead = read(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+
+            if (bytesRead == -1)
+            {
+                std::cerr << "Failed to read to socket for interface: " << interface_name << std::endl;
+                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+            }
+
+            std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
+
+            float position = std::get<1>(parsedData);
+
+            cout << "Current Position of"
+                 << "[" << motor_pair.first << "] : " << position << endl;
+        }
+        else
+        {
+            std::cerr << "Socket not found for interface: " << interface_name << std::endl;
+        }
+    }
+}
+
+void Task::SetHome(const std::map<std::string, int> &sockets)
+{
+    struct can_frame frameToProcess;
+    Task::ActivateSensor();
+
+    for (auto &motor_pair : tmotors)
+    {
+        std::shared_ptr<TMotor> &motor = motor_pair.second;
+        auto interface_name = motor->interFaceName;
+
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2, 0, 5, 0);
+
+        if (sockets.find(interface_name) != sockets.end())
+        {
+            int socket_descriptor = sockets.at(interface_name);
+            ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+
+            if (bytesWritten == -1)
+            {
+                std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
+                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "Socket not found for interface: " << interface_name << std::endl;
+        }
+
+        while (true)
+        {
+            USBIO_DI_ReadValue(DevNum, &DIValue);
+
+            for (int i = 0; i < 8; i++)
+            {
+                if ((DIValue >> i) & 1)
+                {
+                    cout << motor_pair.first << "is at Home location" << endl;
+
+                    // 상태 확인
+                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForQuickStop());
+                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                                   [](const std::string &motorName, bool success)
+                                   {
+                                       if (success)
+                                       {
+                                           std::cout << "Motor [" << motorName << "] stopped for homing process" << std::endl;
+                                       }
+                                       else
+                                       {
+                                           std::cerr << "Motor [" << motorName << "] fail to stop for homing process " << std::endl;
+                                       }
+                                   });
+                    // 상태 확인
+                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
+                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                                   [](const std::string &motorName, bool success)
+                                   {
+                                       if (success)
+                                       {
+                                           std::cout << "zero set for motor [" << motorName << "]." << std::endl;
+                                       }
+                                       else
+                                       {
+                                           std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
+                                       }
+                                   });
+                }
+            }
+        }
+    }
+
+    Task::DeactivateSensor();
 }

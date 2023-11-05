@@ -134,7 +134,7 @@ private:
     // Funtions for SensorLoop
 
     int DeviceID = USB2051_32;
-    BYTE BoardID = 0x2;
+    BYTE BoardID = 0x02;
     BYTE total_di;
     int DevNum, res ;
     char module_name[15];
@@ -143,4 +143,8 @@ private:
     void SensorLoopTask(queue<int> &sensorBuffer);
     void ActivateSensor();
     void DeactivateSensor();
+
+    // Functions for Homing Mode
+    void SetHome(const std::map<std::string, int> &sockets);
+    void CheckCurrentPosition(const std::map<std::string, int> &sockets);
 };
