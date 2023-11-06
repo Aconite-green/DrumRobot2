@@ -19,7 +19,6 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
-    GetReadyArr();
     std::cout << "Start Ready. \n";
     std::cout << "Buffersize : " << sendBuffer.size() << "\n";
 
@@ -40,6 +39,18 @@ void Task::operator()()
         {
             break;
             state = Terminate;
+        }
+        else if (userInput == "ready")
+        {
+            int result = system("clear");
+            if (result != 0)
+            {
+                std::cout << "error during sys function";
+            }
+
+            std::cout << "Setting ...... \n";
+            
+            GetReadyArr(sendBuffer);
         }
         else if (userInput == "run")
         {
@@ -913,11 +924,12 @@ void Task::GetMusicSheet()
     end = RF.size();
 }
 
-void Task::GetReadyArr()
+void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 {
     struct can_frame frame;
 
-    vector<double> Q0 = {0, 0, 0, 0, 0, 0, 0};
+    CheckCurrentPosition(sockets);
+    vector<double> Qi;
     vector<vector<double>> q_ready;
 
     //// 준비자세 배열 생성
@@ -925,8 +937,8 @@ void Task::GetReadyArr()
     int n = 800;
     for (int k = 0; k < n; k++)
     {
-        c_MotorAngle = connect(Q0, standby, k, n);
-        q_ready.push_back(c_MotorAngle);
+        Qi = connect(c_MotorAngle, standby, k, n);
+        q_ready.push_back(Qi);
 
         int j = 4; // motor num
         for (auto &entry : tmotors)
@@ -939,6 +951,52 @@ void Task::GetReadyArr()
             j++;
         }
         // cout << "\n";
+    }
+
+    c_MotorAngle = Qi;
+
+    struct can_frame frameToProcess;
+    chrono::system_clock::time_point external = std::chrono::system_clock::now();
+
+    while (state.load() != Terminate)
+    {
+        if (sendBuffer.size() == 0)
+        {
+            state = Terminate;
+            cout << "All Set.\n";
+        }
+        
+        chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+        chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
+
+        if (elapsed_time.count() >= 5000) // 5ms
+        {
+            external = std::chrono::system_clock::now();
+
+            Task::writeToSocket(tmotors, sendBuffer, sockets);
+
+            if (!maxonMotors.empty())
+            {
+                Task::writeToSocket(maxonMotors, sendBuffer, sockets);
+
+                // sync 신호 전송
+                frameToProcess = sendBuffer.front();
+                sendBuffer.pop();
+                auto it = sockets.find(maxonMotors.begin()->second->interFaceName);
+
+                if (it != sockets.end())
+                {
+                    int socket_descriptor_for_sync = it->second;
+                    ssize_t bytesWritten = write(socket_descriptor_for_sync, &frameToProcess, sizeof(struct can_frame));
+
+                    handleError(bytesWritten, maxonMotors.begin()->second->interFaceName);
+                }
+                else
+                {
+                    std::cerr << "Socket not found for interface: " << maxonMotors.begin()->second->interFaceName << std::endl;
+                }
+            }
+        }
     }
 }
 
@@ -1179,7 +1237,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                     int socket_descriptor_for_sync = it->second;
                     ssize_t bytesWritten = write(socket_descriptor_for_sync, &frameToProcess, sizeof(struct can_frame));
 
-                    // handleError(bytesWritten, maxonMotors.begin()->second->interFaceName);
+                    handleError(bytesWritten, maxonMotors.begin()->second->interFaceName);
                 }
                 else
                 {
@@ -1356,6 +1414,7 @@ void Task::CheckCurrentPosition(const std::map<std::string, int> &sockets)
 {
     struct can_frame frameToProcess;
 
+    int j = 0;  // motor num
     for (auto &motor_pair : tmotors)
     {
         std::shared_ptr<TMotor> &motor = motor_pair.second;
@@ -1384,15 +1443,17 @@ void Task::CheckCurrentPosition(const std::map<std::string, int> &sockets)
 
             std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
 
-            float position = std::get<1>(parsedData);
+            c_MotorAngle[j] = std::get<1>(parsedData);
 
             cout << "Current Position of"
-                 << "[" << motor_pair.first << "] : " << position << endl;
+                 << "[" << motor_pair.first << "] : " << c_MotorAngle[j] << endl;
         }
         else
         {
             std::cerr << "Socket not found for interface: " << interface_name << std::endl;
         }
+
+        j++;
     }
 }
 

@@ -80,7 +80,8 @@ private:
     vector<vector<int>> RA, LA;
     vector<int> RF, LF;
 
-    vector<double> standby = {0, M_PI / 2, M_PI / 2, M_PI / 6, 2 * M_PI / 3, M_PI / 6, 2 * M_PI / 3};
+    // Ready Array : 0, 90, 90, 45, 75, 45, 75
+    vector<double> standby = {0, M_PI / 2, M_PI / 2, M_PI / 4, M_PI / 2.4, M_PI / 4, M_PI / 2.4};
 
     int end = 0;
     int line = 0;
@@ -91,8 +92,8 @@ private:
     double c_L = 0; // 왼손 현재 악기 유무
 
     /*
-    vector<double> P1 = {0.265, -0.391, -0.039837};	 // RightArm Standby
-    vector<double> P2 = {-0.265, -0.391, -0.039837}; // LeftArm Standby
+    vector<double> P1 = {0.265, -0.6187, -0.0532};	 // RightArm Standby
+    vector<double> P2 = {-0.265, -0.6187, -0.0532}; // LeftArm Standby
     int n_inst = 10;
 
     vector<double> R = {0.368, 0.414, 0.368, 0.414};
@@ -113,7 +114,7 @@ private:
     vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n);
     vector<double> IKfun(vector<double> &P1, vector<double> &P2, vector<double> &R, double s, double z0);
     void GetMusicSheet();
-    void GetReadyArr();
+    void GetReadyArr(queue<can_frame> &sendBuffer);
     void PathLoopTask(queue<can_frame> &sendBuffer);
     void GetBackArr();
 
