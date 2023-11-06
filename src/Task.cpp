@@ -19,6 +19,7 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
+    //GetReadyArr(sendBuffer);
     std::cout << "Start Ready. \n";
     std::cout << "Buffersize : " << sendBuffer.size() << "\n";
 
@@ -31,7 +32,7 @@ void Task::operator()()
             std::cout << "error during sys function";
         }*/
 
-        std::cout << "Enter 'run','exit','test': ";
+        std::cout << "Enter 'ready', 'run','exit','test': ";
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
 
@@ -49,7 +50,7 @@ void Task::operator()()
             }
 
             std::cout << "Setting ...... \n";
-            
+
             GetReadyArr(sendBuffer);
         }
         else if (userInput == "run")
@@ -927,13 +928,14 @@ void Task::GetMusicSheet()
 void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 {
     struct can_frame frame;
+    struct can_frame frameToProcess;
+    chrono::system_clock::time_point external = std::chrono::system_clock::now();
 
-    CheckCurrentPosition(sockets);
+    CheckCurrentPosition();
     vector<double> Qi;
     vector<vector<double>> q_ready;
 
     //// 준비자세 배열 생성
-
     int n = 800;
     for (int k = 0; k < n; k++)
     {
@@ -944,7 +946,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
-            float p_des = c_MotorAngle[j];
+            float p_des = Qi[j];
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
             sendBuffer.push(frame);
 
@@ -955,17 +957,47 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 
     c_MotorAngle = Qi;
 
-    struct can_frame frameToProcess;
-    chrono::system_clock::time_point external = std::chrono::system_clock::now();
+    // CSV 파일명 설정
+    std::string csvFileName = "q_ready_input.csv";
 
+    // CSV 파일 열기
+    std::ofstream csvFile(csvFileName);
+
+    if (!csvFile.is_open())
+    {
+        std::cerr << "Error opening CSV file." << std::endl;
+    }
+
+    // 2차원 벡터의 데이터를 CSV 파일로 쓰기
+    for (const auto &row : q_ready)
+    {
+        for (const double cell : row)
+        {
+            csvFile << std::fixed << std::setprecision(5) << cell;
+            if (&cell != &row.back())
+            {
+                csvFile << ","; // 쉼표로 셀 구분
+            }
+        }
+        csvFile << "\n"; // 다음 행으로 이동
+    }
+
+    // CSV 파일 닫기
+    csvFile.close();
+
+    std::cout << "CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
+
+    
+    //// 준비자세 동작
     while (state.load() != Terminate)
     {
         if (sendBuffer.size() == 0)
         {
-            state = Terminate;
             cout << "All Set.\n";
+            CheckCurrentPosition();
+            return;
         }
-        
+
         chrono::system_clock::time_point internal = std::chrono::system_clock::now();
         chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
 
@@ -998,6 +1030,9 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
             }
         }
     }
+
+    
+    
 }
 
 void Task::PathLoopTask(queue<can_frame> &sendBuffer)
@@ -1410,11 +1445,21 @@ void Task::DeactivateSensor()
 // Functions for Homing Mode
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Task::CheckCurrentPosition(const std::map<std::string, int> &sockets)
+void Task::CheckCurrentPosition()
 {
     struct can_frame frameToProcess;
 
-    int j = 0;  // motor num
+    for (const auto &socketPair : sockets)
+    {
+        int hsocket = socketPair.second;
+        if (set_socket_timeout(hsocket, 0, 50000) != 0)
+        {
+            // 타임아웃 설정 실패 처리
+            std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
+        }
+    }
+
+    int j = 4; // motor num
     for (auto &motor_pair : tmotors)
     {
         std::shared_ptr<TMotor> &motor = motor_pair.second;
@@ -1445,7 +1490,7 @@ void Task::CheckCurrentPosition(const std::map<std::string, int> &sockets)
 
             c_MotorAngle[j] = std::get<1>(parsedData);
 
-            cout << "Current Position of"
+            cout << "Current Position of "
                  << "[" << motor_pair.first << "] : " << c_MotorAngle[j] << endl;
         }
         else
