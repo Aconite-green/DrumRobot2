@@ -1432,6 +1432,8 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
             }
         }
     }
+
+    parse_and_save_to_csv("DrumData_out");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
