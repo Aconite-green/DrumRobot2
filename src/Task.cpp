@@ -19,7 +19,7 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
-    //GetReadyArr(sendBuffer);
+    // GetReadyArr(sendBuffer);
     std::cout << "Start Ready. \n";
     std::cout << "Buffersize : " << sendBuffer.size() << "\n";
 
@@ -987,7 +987,6 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 
     std::cout << "CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
 
-    
     //// 준비자세 동작
     while (state.load() != Terminate)
     {
@@ -1030,9 +1029,6 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
             }
         }
     }
-
-    
-    
 }
 
 void Task::PathLoopTask(queue<can_frame> &sendBuffer)
@@ -1289,6 +1285,51 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for RecieveTask
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Task::parse_and_save_to_csv(const std::string &csv_file_name)
+{
+
+    // CSV 파일 열기. 파일이 없으면 새로 생성됩니다.
+    std::ofstream ofs(csv_file_name, std::ios::app);
+    int id;
+    float position;
+    
+    if (!ofs.is_open())
+    {
+        std::cerr << "Failed to open or create the CSV file: " << csv_file_name << std::endl;
+        return;
+    }
+
+    // 파일이 새로 생성되었으면 CSV 헤더를 추가
+    ofs.seekp(0, std::ios::end);
+    if (ofs.tellp() == 0)
+    {
+        ofs << "ID,Position(degree),Speed,Torque\n";
+    };
+
+    while (!recieveBuffer.empty())
+    {
+        can_frame frame = recieveBuffer.front();
+        recieveBuffer.pop();
+
+        for (const auto &pair : tmotors)
+        {
+            std::shared_ptr<TMotor> motor = pair.second;
+            if (motor->nodeId == frame.data[0])
+            {
+                std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frame);
+                id = std::get<0>(parsedData);
+                position = std::get<1>(parsedData);
+
+                ofs << "0x" << std::hex << std::setw(4) << std::setfill('0') << id << ","
+                    << std::dec
+                    << position << "\n";
+            }
+        }
+    }
+
+    ofs.close();
+}
 
 void Task::checkUserInput()
 {

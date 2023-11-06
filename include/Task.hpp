@@ -131,6 +131,8 @@ private:
     void checkUserInput();
     void RecieveLoopTask(queue<can_frame> &recieveBuffer);
     void handleSocketRead(int socket_descriptor, int motor_count, queue<can_frame> &recieveBuffer);
+    void parse_and_save_to_csv(const std::string &csv_file_name);
+
 
     // Funtions for SensorLoop
 
