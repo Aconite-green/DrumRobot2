@@ -115,7 +115,7 @@ void Task::ActivateControlTask()
     for (const auto &socketPair : sockets)
     {
         int hsocket = socketPair.second;
-        if (set_socket_timeout(hsocket, 0, 50000) != 0)
+        if (set_socket_timeout(hsocket, 2, 0) != 0)
         {
             // 타임아웃 설정 실패 처리
             std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
@@ -985,7 +985,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     // CSV 파일 닫기
     csvFile.close();
 
-    std::cout << "CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
+    std::cout << "준비동작 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
 
     //// 준비자세 동작
     while (sendBuffer.size() != 0)
@@ -1272,6 +1272,36 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         }
     }
 
+    // CSV 파일명 설정
+    std::string csvFileName = "q_input.csv";
+
+    // CSV 파일 열기
+    std::ofstream csvFile(csvFileName);
+
+    if (!csvFile.is_open())
+    {
+        std::cerr << "Error opening CSV file." << std::endl;
+    }
+
+    // 2차원 벡터의 데이터를 CSV 파일로 쓰기
+    for (const auto &row : q)
+    {
+        for (const double cell : row)
+        {
+            csvFile << std::fixed << std::setprecision(5) << cell;
+            if (&cell != &row.back())
+            {
+                csvFile << ","; // 쉼표로 셀 구분
+            }
+        }
+        csvFile << "\n"; // 다음 행으로 이동
+    }
+
+    // CSV 파일 닫기
+    csvFile.close();
+
+    std::cout << "연주 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
+
     DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
@@ -1485,11 +1515,12 @@ void Task::DeactivateSensor()
 void Task::CheckCurrentPosition()
 {
     struct can_frame frameToProcess;
+    struct can_frame frameToRecieve;
 
     for (const auto &socketPair : sockets)
     {
         int hsocket = socketPair.second;
-        if (set_socket_timeout(hsocket, 0, 50000) != 0)
+        if (set_socket_timeout(hsocket, 0, 5000) != 0)
         {
             // 타임아웃 설정 실패 처리
             std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
@@ -1507,7 +1538,7 @@ void Task::CheckCurrentPosition()
         if (sockets.find(interface_name) != sockets.end())
         {
             int socket_descriptor = sockets.at(interface_name);
-            ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+            ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(can_frame));
 
             if (bytesWritten == -1)
             {
@@ -1515,7 +1546,8 @@ void Task::CheckCurrentPosition()
                 std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
             }
 
-            ssize_t bytesRead = read(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+            usleep(5000);
+            ssize_t bytesRead = read(socket_descriptor, &frameToRecieve, sizeof(can_frame));
 
             if (bytesRead == -1)
             {
@@ -1523,14 +1555,31 @@ void Task::CheckCurrentPosition()
                 std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
             }
 
+            std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
 
+            // frameToProcess 출력 코드
+            printf("Data: ");
+            for (int i = 0; i < frameToRecieve.can_dlc; ++i)
+            {
+                printf("%02X ", static_cast<int>(frameToRecieve.data[i]));
+            }
+            printf("\n");
+
+            ssize_t bytesRead = read(socket_descriptor, &frameToRecieve, sizeof(can_frame));
+
+            if (bytesRead == -1)
+            {
+                std::cerr << "Failed to read to socket for interface: " << interface_name << std::endl;
+                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+            }
 
             std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
 
-            // frameToProcess 출력 코드 
+            // frameToProcess 출력 코드
             printf("Data: ");
-            for (int i = 0; i < frameToProcess.can_dlc; ++i) {
-                printf("%02X ", static_cast<int>(frameToProcess.data[i]));
+            for (int i = 0; i < frameToRecieve.can_dlc; ++i)
+            {
+                printf("%02X ", static_cast<int>(frameToRecieve.data[i]));
             }
             printf("\n");
 

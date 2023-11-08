@@ -124,8 +124,8 @@ private:
     void SendLoopTask(queue<can_frame> &sendBuffer);
 
     // Functions for RecieveLoop
-    const int NUM_FRAMES = 100;
-    const int TIME_THRESHOLD_MS = 100;
+    const int NUM_FRAMES = 1;
+    const int TIME_THRESHOLD_MS = 5;
 
     void initializeMotorCounts(std::map<std::string, int> &motor_count_per_port);
     void checkUserInput();
