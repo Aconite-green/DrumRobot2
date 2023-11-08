@@ -14,7 +14,7 @@
                 "${workspaceFolder}/src/${fileBasenameNoExtension}",
                 "-I${workspaceFolder}/include",
                 "-L${workspaceFolder}/lib",
-                "-lUSBIO_64", // <-- Makefile에서 사용한 라이브러리 이름을 여기에 추가
+                "-lUSBIO_64",
                 "-lm",
                 "-lpthread"
             ],

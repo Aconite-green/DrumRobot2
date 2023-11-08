@@ -988,15 +988,8 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     std::cout << "CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
 
     //// 준비자세 동작
-    while (state.load() != Terminate)
+    while (sendBuffer.size() != 0)
     {
-        if (sendBuffer.size() == 0)
-        {
-            cout << "All Set.\n";
-            CheckCurrentPosition();
-            return;
-        }
-
         chrono::system_clock::time_point internal = std::chrono::system_clock::now();
         chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
 
@@ -1029,6 +1022,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
             }
         }
     }
+    CheckCurrentPosition();
 }
 
 void Task::PathLoopTask(queue<can_frame> &sendBuffer)
@@ -1293,7 +1287,7 @@ void Task::parse_and_save_to_csv(const std::string &csv_file_name)
     std::ofstream ofs(csv_file_name, std::ios::app);
     int id;
     float position;
-    
+
     if (!ofs.is_open())
     {
         std::cerr << "Failed to open or create the CSV file: " << csv_file_name << std::endl;
@@ -1304,7 +1298,7 @@ void Task::parse_and_save_to_csv(const std::string &csv_file_name)
     ofs.seekp(0, std::ios::end);
     if (ofs.tellp() == 0)
     {
-        ofs << "ID,Position(degree),Speed,Torque\n";
+        ofs << "ID,Position(rad)\n";
     };
 
     while (!recieveBuffer.empty())
@@ -1509,7 +1503,7 @@ void Task::CheckCurrentPosition()
         auto interface_name = motor->interFaceName;
 
         // 상태 확인
-        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
+        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForControlMode());
         if (sockets.find(interface_name) != sockets.end())
         {
             int socket_descriptor = sockets.at(interface_name);
@@ -1529,7 +1523,11 @@ void Task::CheckCurrentPosition()
                 std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
             }
 
+
+
             std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
+
+            // frameToProcess 출력 코드 for()
 
             c_MotorAngle[j] = std::get<1>(parsedData);
 
