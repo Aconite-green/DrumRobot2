@@ -1527,7 +1527,12 @@ void Task::CheckCurrentPosition()
 
             std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
 
-            // frameToProcess 출력 코드 for()
+            // frameToProcess 출력 코드 
+            printf("Data: ");
+            for (int i = 0; i < frameToProcess.can_dlc; ++i) {
+                printf("%02X ", static_cast<int>(frameToProcess.data[i]));
+            }
+            printf("\n");
 
             c_MotorAngle[j] = std::get<1>(parsedData);
 
