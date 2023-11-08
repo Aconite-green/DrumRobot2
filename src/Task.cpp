@@ -947,7 +947,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[j];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
 
             j++;
@@ -1108,7 +1108,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[j];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
 
             j++;
@@ -1125,7 +1125,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[j];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
 
             j++;
@@ -1159,7 +1159,7 @@ void Task::GetBackArr()
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[j];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 13.46, 0.46, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
 
             j++;
