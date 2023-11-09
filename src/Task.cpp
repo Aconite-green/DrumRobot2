@@ -143,20 +143,6 @@ void Task::ActivateControlTask()
                                    std::cerr << "Motor [" << motorName << "] status check failed." << std::endl;
                                }
                            });
-            // 상태 확인
-            fillCanFrameFromInfo(&frame, motor->getCanFrameForZeroing());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
-                           [](const std::string &motorName, bool success)
-                           {
-                               if (success)
-                               {
-                                   std::cout << "zero set for motor [" << motorName << "]." << std::endl;
-                               }
-                               else
-                               {
-                                   std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
-                               }
-                           });
 
             // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForControlMode());
@@ -1547,23 +1533,6 @@ void Task::CheckCurrentPosition()
             }
 
             usleep(5000);
-            ssize_t bytesRead = read(socket_descriptor, &frameToRecieve, sizeof(can_frame));
-
-            if (bytesRead == -1)
-            {
-                std::cerr << "Failed to read to socket for interface: " << interface_name << std::endl;
-                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
-            }
-
-            std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
-
-            // frameToProcess 출력 코드
-            printf("Data: ");
-            for (int i = 0; i < frameToRecieve.can_dlc; ++i)
-            {
-                printf("%02X ", static_cast<int>(frameToRecieve.data[i]));
-            }
-            printf("\n");
 
             ssize_t bytesRead = read(socket_descriptor, &frameToRecieve, sizeof(can_frame));
 
@@ -1573,7 +1542,7 @@ void Task::CheckCurrentPosition()
                 std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
             }
 
-            std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToProcess);
+            std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToRecieve);
 
             // frameToProcess 출력 코드
             printf("Data: ");
