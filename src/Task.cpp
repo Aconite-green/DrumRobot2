@@ -1,13 +1,23 @@
 #include "../include/Task.hpp"
 
 Task::Task(map<string, shared_ptr<TMotor>> &tmotors_input,
-           map<string, shared_ptr<MaxonMotor>> &maxonMotors_input,
-           const map<string, int> &sockets_input)
+           map<string, shared_ptr<MaxonMotor>> &maxonMotors_input
+           )
     : tmotors(tmotors_input),
       maxonMotors(maxonMotors_input),
-      sockets(sockets_input)
+      canUtils(extractIfnamesFromMotors(tmotors_input)) // 멤버 초기화
 {
-    state = 0;
+    state.store(0);
+}
+
+vector<string> Task::extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>> &motors)
+{
+    set<string> interface_names;
+    for (const auto &motor_pair : motors)
+    {
+        interface_names.insert(motor_pair.second->interFaceName);
+    }
+    return vector<string>(interface_names.begin(), interface_names.end());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +41,6 @@ void Task::operator()()
         {
             std::cout << "error during sys function";
         }*/
-
         std::cout << "Enter 'ready', 'run','exit','test': ";
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
@@ -112,7 +121,7 @@ void Task::ActivateControlTask()
     struct can_frame frame;
 
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
-    for (const auto &socketPair : sockets)
+    for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
         if (set_socket_timeout(hsocket, 2, 0) != 0)
@@ -131,7 +140,7 @@ void Task::ActivateControlTask()
 
             // 상태 확인
             fillCanFrameFromInfo(&frame, motor->getCanFrameForCheckMotor());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success)
                            {
                                if (success)
@@ -146,7 +155,7 @@ void Task::ActivateControlTask()
 
             // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForControlMode());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success)
                            {
                                if (success)
@@ -178,7 +187,7 @@ void Task::ActivateControlTask()
 
             // 상태 확인
             fillCanFrameFromInfo(&frame, motor->getCanFrameForCheckMotor());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success)
                            {
                                if (success)
@@ -193,33 +202,33 @@ void Task::ActivateControlTask()
 
             // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForControlMode());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success) {
 
                            });
 
             // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForPosOffset());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success) {
 
                            });
             // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForTorqueOffset());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success) {
 
                            });
 
             // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForOperational());
-            sendNotRead(sockets.at(motor->interFaceName), name, frame,
+            sendNotRead(canUtils.sockets.at(motor->interFaceName), name, frame,
                         [](const std::string &motorName, bool success) {
 
                         });
 
             fillCanFrameFromInfo(&frame, motor->getCanFrameForEnable());
-            sendNotRead(sockets.at(motor->interFaceName), name, frame,
+            sendNotRead(canUtils.sockets.at(motor->interFaceName), name, frame,
                         [](const std::string &motorName, bool success)
                         {
                             if (success)
@@ -233,7 +242,7 @@ void Task::ActivateControlTask()
                         });
 
             fillCanFrameFromInfo(&frame, motor->getCanFrameForSync());
-            writeAndReadForSync(sockets.at(motor->interFaceName), name, frame, maxonMotors.size(),
+            writeAndReadForSync(canUtils.sockets.at(motor->interFaceName), name, frame, maxonMotors.size(),
                                 [](const std::string &motorName, bool success) {
 
                                 });
@@ -253,7 +262,7 @@ void Task::DeactivateControlTask()
     struct can_frame frame;
 
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
-    for (const auto &socketPair : sockets)
+    for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
         if (set_socket_timeout(hsocket, 0, 50000) != 0)
@@ -272,14 +281,14 @@ void Task::DeactivateControlTask()
             std::shared_ptr<TMotor> motor = motorPair.second;
 
             fillCanFrameFromInfo(&frame, motor->getCanFrameForCheckMotor());
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success) {
 
                            });
 
             fillCanFrameFromInfo(&frame, motor->getCanFrameForExit());
 
-            sendAndReceive(sockets.at(motor->interFaceName), name, frame,
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success)
                            {
                                if (success)
@@ -310,7 +319,7 @@ void Task::DeactivateControlTask()
             std::shared_ptr<MaxonMotor> motor = motorPair.second;
 
             fillCanFrameFromInfo(&frame, motor->getCanFrameForQuickStop());
-            sendNotRead(sockets.at(motor->interFaceName), name, frame,
+            sendNotRead(canUtils.sockets.at(motor->interFaceName), name, frame,
                         [](const std::string &motorName, bool success)
                         {
                             if (success)
@@ -324,7 +333,7 @@ void Task::DeactivateControlTask()
                         });
 
             fillCanFrameFromInfo(&frame, motor->getCanFrameForSync());
-            writeAndReadForSync(sockets.at(motor->interFaceName), name, frame, maxonMotors.size(),
+            writeAndReadForSync(canUtils.sockets.at(motor->interFaceName), name, frame, maxonMotors.size(),
                                 [](const std::string &motorName, bool success) {
 
                                 });
@@ -346,7 +355,7 @@ void Task::DeactivateControlTask()
 void Task::Tuning(float kp, float kd, float sine_t)
 {
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
-    for (const auto &socketPair : sockets)
+    for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
         if (set_socket_timeout(hsocket, 0, 50000) != 0)
@@ -404,7 +413,7 @@ void Task::Tuning(float kp, float kd, float sine_t)
                     if (elapsed_time >= 5)
                     {
 
-                        ssize_t bytesWritten = write(sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
+                        ssize_t bytesWritten = write(canUtils.sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
                         if (bytesWritten == -1)
                         {
                             std::cerr << "Failed to write to socket for interface: " << motor->interFaceName << std::endl;
@@ -415,7 +424,7 @@ void Task::Tuning(float kp, float kd, float sine_t)
                             temp++;
                         }
 
-                        ssize_t bytesRead = read(sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
+                        ssize_t bytesRead = read(canUtils.sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
 
                         if (bytesRead == -1)
                         {
@@ -983,18 +992,18 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         {
             external = std::chrono::system_clock::now();
 
-            Task::writeToSocket(tmotors, sendBuffer, sockets);
+            Task::writeToSocket(tmotors, sendBuffer, canUtils.sockets);
 
             if (!maxonMotors.empty())
             {
-                Task::writeToSocket(maxonMotors, sendBuffer, sockets);
+                Task::writeToSocket(maxonMotors, sendBuffer, canUtils.sockets);
 
                 // sync 신호 전송
                 frameToProcess = sendBuffer.front();
                 sendBuffer.pop();
-                auto it = sockets.find(maxonMotors.begin()->second->interFaceName);
+                auto it = canUtils.sockets.find(maxonMotors.begin()->second->interFaceName);
 
-                if (it != sockets.end())
+                if (it != canUtils.sockets.end())
                 {
                     int socket_descriptor_for_sync = it->second;
                     ssize_t bytesWritten = write(socket_descriptor_for_sync, &frameToProcess, sizeof(struct can_frame));
@@ -1008,6 +1017,8 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
             }
         }
     }
+
+    canUtils.restart_all_can_ports();
     CheckCurrentPosition();
 }
 
@@ -1232,18 +1243,18 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
         {
             external = std::chrono::system_clock::now();
 
-            Task::writeToSocket(tmotors, sendBuffer, sockets);
+            Task::writeToSocket(tmotors, sendBuffer, canUtils.sockets);
 
             if (!maxonMotors.empty())
             {
-                Task::writeToSocket(maxonMotors, sendBuffer, sockets);
+                Task::writeToSocket(maxonMotors, sendBuffer, canUtils.sockets);
 
                 // sync 신호 전송
                 frameToProcess = sendBuffer.front();
                 sendBuffer.pop();
-                auto it = sockets.find(maxonMotors.begin()->second->interFaceName);
+                auto it = canUtils.sockets.find(maxonMotors.begin()->second->interFaceName);
 
-                if (it != sockets.end())
+                if (it != canUtils.sockets.end())
                 {
                     int socket_descriptor_for_sync = it->second;
                     ssize_t bytesWritten = write(socket_descriptor_for_sync, &frameToProcess, sizeof(struct can_frame));
@@ -1358,7 +1369,7 @@ void Task::checkUserInput()
 void Task::initializeMotorCounts(std::map<std::string, int> &motor_count_per_port)
 {
     // 먼저 motor_count_per_port의 값을 0으로 초기화합니다.
-    for (const auto &socket_pair : sockets)
+    for (const auto &socket_pair : canUtils.sockets)
     {
         motor_count_per_port[socket_pair.first] = 0;
     }
@@ -1404,7 +1415,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
     std::map<std::string, int> motor_count_per_port;
 
     // 소켓 옵션 및 모터 카운트 초기화
-    for (const auto &socket_pair : sockets)
+    for (const auto &socket_pair : canUtils.sockets)
     {
         int socket_descriptor = socket_pair.second;
         if (set_socket_timeout(socket_descriptor, 0, 5000) < 0) // 5ms
@@ -1431,7 +1442,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
         if (elapsed_time.count() >= TIME_THRESHOLD_MS)
         {
             external = std::chrono::system_clock::now();
-            for (const auto &socket_pair : sockets)
+            for (const auto &socket_pair : canUtils.sockets)
             {
                 int socket_descriptor = socket_pair.second;
                 int motor_count = motor_count_per_port[socket_pair.first];
@@ -1503,7 +1514,7 @@ void Task::CheckCurrentPosition()
     struct can_frame frameToProcess;
     struct can_frame frameToRecieve;
 
-    for (const auto &socketPair : sockets)
+    for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
         if (set_socket_timeout(hsocket, 0, 5000) != 0)
@@ -1513,7 +1524,7 @@ void Task::CheckCurrentPosition()
         }
     }
 
-    int j = 4; // motor num
+    int j = 1; // motor num
     for (auto &motor_pair : tmotors)
     {
         std::shared_ptr<TMotor> &motor = motor_pair.second;
@@ -1521,9 +1532,9 @@ void Task::CheckCurrentPosition()
 
         // 상태 확인
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForControlMode());
-        if (sockets.find(interface_name) != sockets.end())
+        if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
         {
-            int socket_descriptor = sockets.at(interface_name);
+            int socket_descriptor = canUtils.sockets.at(interface_name);
             ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(can_frame));
 
             if (bytesWritten == -1)

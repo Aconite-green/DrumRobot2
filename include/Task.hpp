@@ -25,6 +25,7 @@
 #include <atomic>
 #include <cmath>
 #include <chrono>
+#include <set>
 
 #define Pause 1
 #define Terminate 2
@@ -38,27 +39,28 @@ class Task
 public:
     // 생성자 매개변수 이름 변경 및 명확성 추가
     Task(map<string, shared_ptr<TMotor>> &input_tmotors,
-         map<string, shared_ptr<MaxonMotor>> &input_maxonMotors,
-         const map<string, int> &input_sockets);
+         map<string, shared_ptr<MaxonMotor>> &input_maxonMotors
+        );
 
     void operator()();
 
 private:
     map<string, shared_ptr<TMotor>> &tmotors;
     map<string, shared_ptr<MaxonMotor>> &maxonMotors;
-    const map<string, int> &sockets;
     queue<can_frame> sendBuffer;
     queue<can_frame> recieveBuffer;
     queue<int> sensorBuffer;
-    atomic<int> state; // 초기값은 생성자에서 설정
+    atomic<int> state; 
 
     TMotorCommandParser TParser;
     MaxonCommandParser MParser;
+    CanSocketUtils canUtils;
 
     // DeactivateTask/ActivateTask
     void ActivateControlTask();
     void DeactivateControlTask();
-
+    vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>> &motors);
+    
     // Functions for Testing
     const int Tdegree_180 = M_PI;
     const int Tdegree_90 = M_PI / 2;
@@ -133,13 +135,12 @@ private:
     void handleSocketRead(int socket_descriptor, int motor_count, queue<can_frame> &recieveBuffer);
     void parse_and_save_to_csv(const std::string &csv_file_name);
 
-
     // Funtions for SensorLoop
 
     int DeviceID = USB2051_32;
     BYTE BoardID = 0x02;
     BYTE total_di;
-    int DevNum, res ;
+    int DevNum, res;
     char module_name[15];
     DWORD DIValue = 0, o_dwDICntValue[USBIO_DI_MAX_CHANNEL];
 
