@@ -174,6 +174,8 @@ void CanSocketUtils::restart_all_can_ports()
     for (const auto &port : ifnames)
     {
         down_port(port.c_str());
+        printf("Port '%s' is down.\n", port.c_str()); // 포트가 다운됨을 알림
+
         int socket_fd = sockets[port];
         if (socket_fd >= 0)
         {
@@ -187,26 +189,29 @@ void CanSocketUtils::restart_all_can_ports()
     {
         usleep(100000); // 100ms 대기
         activate_port(port.c_str());
+        printf("Activating port '%s'.\n", port.c_str()); // 포트 활성화 중
+
         int new_socket_fd = create_socket(port);
         if (new_socket_fd < 0)
         {
             // 새로운 소켓 생성에 실패한 경우 처리
-            // 에러 로그를 남기거나 프로그램을 종료할 수 있습니다.
             fprintf(stderr, "Failed to create a new socket for port: %s\n", port.c_str());
         }
         else
         {
-            sockets[port] = new_socket_fd; // 소켓 디스크립터 값을 업데이트합니다.
+            sockets[port] = new_socket_fd;                               // 소켓 디스크립터 값을 업데이트합니다.
+            printf("New socket created for port '%s'.\n", port.c_str()); // 새 소켓 생성 완료
         }
     }
 }
 
-void CanSocketUtils::down_port(const char *port){
-     char command[100];
-        snprintf(command, sizeof(command), "sudo ip link set %s down", port);
-        int ret = system(command);
-        if (ret != 0)
-        {
-            fprintf(stderr, "Failed to down port: %s\n", port);
-        }
+void CanSocketUtils::down_port(const char *port)
+{
+    char command[100];
+    snprintf(command, sizeof(command), "sudo ip link set %s down", port);
+    int ret = system(command);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Failed to down port: %s\n", port);
+    }
 }

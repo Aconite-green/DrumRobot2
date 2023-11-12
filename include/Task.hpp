@@ -5,6 +5,7 @@
 #include "../include/Motor.hpp"
 #include "../include/TaskUtility.hpp"
 #include "../include/Global.hpp"
+#include "../include/TaskUtility.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -38,19 +39,18 @@ class Task
 
 public:
     // 생성자 매개변수 이름 변경 및 명확성 추가
-    Task(map<string, shared_ptr<TMotor>> &input_tmotors,
-         map<string, shared_ptr<MaxonMotor>> &input_maxonMotors
-        );
+   Task(map<string, shared_ptr<TMotor>, CustomCompare> &input_tmotors,
+         map<string, shared_ptr<MaxonMotor>> &input_maxonMotors);
 
     void operator()();
 
 private:
-    map<string, shared_ptr<TMotor>> &tmotors;
+    map<string, shared_ptr<TMotor>, CustomCompare> &tmotors;
     map<string, shared_ptr<MaxonMotor>> &maxonMotors;
     queue<can_frame> sendBuffer;
     queue<can_frame> recieveBuffer;
     queue<int> sensorBuffer;
-    atomic<int> state; 
+    atomic<int> state;
 
     TMotorCommandParser TParser;
     MaxonCommandParser MParser;
@@ -59,8 +59,8 @@ private:
     // DeactivateTask/ActivateTask
     void ActivateControlTask();
     void DeactivateControlTask();
-    vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>> &motors);
-    
+    vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors);
+
     // Functions for Testing
     const int Tdegree_180 = M_PI;
     const int Tdegree_90 = M_PI / 2;
@@ -68,7 +68,7 @@ private:
     const int Mdegree_90 = 1024 * 35;
     int temp = 0;
     int val = 0;
-    void Tuning(float kp, float kd, float sine_t);
+    void Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles);
     void TuningLoopTask();
     void PeriodicMotionTester(queue<can_frame> &sendBuffer);
 
@@ -128,6 +128,7 @@ private:
     // Functions for RecieveLoop
     const int NUM_FRAMES = 1;
     const int TIME_THRESHOLD_MS = 5;
+    int writeFailCount = 0;
 
     void initializeMotorCounts(std::map<std::string, int> &motor_count_per_port);
     void checkUserInput();

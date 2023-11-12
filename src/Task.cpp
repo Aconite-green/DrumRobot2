@@ -1,16 +1,15 @@
 #include "../include/Task.hpp"
 
-Task::Task(map<string, shared_ptr<TMotor>> &tmotors_input,
-           map<string, shared_ptr<MaxonMotor>> &maxonMotors_input
-           )
-    : tmotors(tmotors_input),
-      maxonMotors(maxonMotors_input),
-      canUtils(extractIfnamesFromMotors(tmotors_input)) // 멤버 초기화
+Task::Task(map<string, shared_ptr<TMotor>, CustomCompare> &input_tmotors,
+         map<string, shared_ptr<MaxonMotor>> &input_maxonMotors)
+    : tmotors(input_tmotors),
+      maxonMotors(input_maxonMotors),
+      canUtils(extractIfnamesFromMotors(input_tmotors)) // 멤버 초기화
 {
     state.store(0);
 }
 
-vector<string> Task::extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>> &motors)
+vector<string> Task::extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors)
 {
     set<string> interface_names;
     for (const auto &motor_pair : motors)
@@ -64,6 +63,7 @@ void Task::operator()()
         }
         else if (userInput == "run")
         {
+            canUtils.restart_all_can_ports();
             int result = system("clear");
             if (result != 0)
             {
@@ -85,22 +85,12 @@ void Task::operator()()
             while (true)
             {
 
-                std::cout << "Enter 'tuning', 'waves', 'exit' :";
+                std::cout << "Enter 'tuning','exit' :";
                 std::cin >> userInput;
                 std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
                 if (userInput == "tuning")
                 {
                     TuningLoopTask();
-                }
-                else if (userInput == "waves")
-                {
-                    std::thread pathThread(&Task::PeriodicMotionTester, this, std::ref(sendBuffer));
-                    std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
-                    std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
-
-                    pathThread.join();
-                    sendThread.join();
-                    readThread.join();
                 }
                 else if (userInput == "exit")
                 {
@@ -167,6 +157,7 @@ void Task::ActivateControlTask()
                                    std::cerr << "Failed to set control mode for motor [" << motorName << "]." << std::endl;
                                }
                            });
+            
 
             // 구분자 추가
             std::cout << "=======================================" << std::endl;
@@ -352,7 +343,7 @@ void Task::DeactivateControlTask()
 // Functions for Testing
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Task::Tuning(float kp, float kd, float sine_t)
+void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles)
 {
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
     for (const auto &socketPair : canUtils.sockets)
@@ -383,7 +374,6 @@ void Task::Tuning(float kp, float kd, float sine_t)
     struct can_frame frame;
 
     float sample_time = 0.005;
-    int cycles = 2;
     int max_samples = static_cast<int>(sine_t / sample_time);
     float v_des = 0;
     float tff_des = 0;
@@ -396,6 +386,8 @@ void Task::Tuning(float kp, float kd, float sine_t)
 
             for (auto &entry : tmotors)
             {
+                if (entry.first != selectedMotor)
+                    continue;
 
                 std::shared_ptr<TMotor> &motor = entry.second;
 
@@ -452,10 +444,11 @@ void Task::Tuning(float kp, float kd, float sine_t)
 
 void Task::TuningLoopTask()
 {
-    std::string userInput;
+    std::string userInput, selectedMotor;
     float kp = 50.0;
     float kd = 1.0;
     float sine_t = 4.0;
+    int cycles = 2;
 
     std::stringstream ss;
     std::string fileName;
@@ -475,17 +468,31 @@ void Task::TuningLoopTask()
         {
             printf("error using sys function\n");
         }
+        // tmotors에 있는 모터 목록 출력
+        std::cout << "Available motors: \n";
+        for (const auto &motor : tmotors)
+        {
+            std::cout << motor.first << " (" << motor.second->motorType << ")" << std::endl;
+        }
+
+        std::cout << "\nCurrently selected motor: " << selectedMotor << "\n";
         std::cout << "Current Kp : " << kp << "\n";
         std::cout << "Current Kd : " << kd << "\n";
         std::cout << "Time for Sine period : " << sine_t << "\n";
+         std::cout << "Current Cycles : " << cycles << "\n";
         std::cout << "\n\n";
-        std::cout << "Enter run, kp, kd, period, exit : \n";
+        std::cout << "Enter 'select', 'run', 'kp', 'kd', 'period', 'cycles', 'exit': \n";
         cout << "temp =" << temp << endl;
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
-        if (userInput == "run")
+        if (userInput == "run"&& !selectedMotor.empty())
         {
-            Task::Tuning(kp, kd, sine_t);
+            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
+        }
+        else if (userInput == "select")
+        {
+            std::cout << "Enter the name of the motor to tune: ";
+            std::cin >> selectedMotor;
         }
         else if (userInput == "kp")
         {
@@ -1017,9 +1024,6 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
             }
         }
     }
-
-    canUtils.restart_all_can_ports();
-    CheckCurrentPosition();
 }
 
 void Task::PathLoopTask(queue<can_frame> &sendBuffer)
@@ -1189,8 +1193,17 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
             if (bytesWritten == -1)
             {
-                std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
-                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+                writeFailCount++;
+                if (writeFailCount >= 10)
+                {
+                    state = Terminate;
+                    canUtils.restart_all_can_ports();
+                    writeFailCount = 0; // 카운터 리셋
+                }
+            }
+            else
+            {
+                writeFailCount = 0; // 성공 시 카운터 리셋
             }
         }
         else
@@ -1511,6 +1524,7 @@ void Task::DeactivateSensor()
 
 void Task::CheckCurrentPosition()
 {
+    canUtils.restart_all_can_ports();
     struct can_frame frameToProcess;
     struct can_frame frameToRecieve;
 
