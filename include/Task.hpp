@@ -152,4 +152,5 @@ private:
     // Functions for Homing Mode
     void SetHome(const std::map<std::string, int> &sockets);
     void CheckCurrentPosition();
+    void FixMotorPosition();
 };

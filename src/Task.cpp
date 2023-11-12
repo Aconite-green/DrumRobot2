@@ -1,7 +1,7 @@
 #include "../include/Task.hpp"
 
 Task::Task(map<string, shared_ptr<TMotor>, CustomCompare> &input_tmotors,
-         map<string, shared_ptr<MaxonMotor>> &input_maxonMotors)
+           map<string, shared_ptr<MaxonMotor>> &input_maxonMotors)
     : tmotors(input_tmotors),
       maxonMotors(input_maxonMotors),
       canUtils(extractIfnamesFromMotors(input_tmotors)) // 멤버 초기화
@@ -82,6 +82,7 @@ void Task::operator()()
         }
         else if (userInput == "test")
         {
+            Task::FixMotorPosition();
             while (true)
             {
 
@@ -157,7 +158,6 @@ void Task::ActivateControlTask()
                                    std::cerr << "Failed to set control mode for motor [" << motorName << "]." << std::endl;
                                }
                            });
-            
 
             // 구분자 추가
             std::cout << "=======================================" << std::endl;
@@ -479,13 +479,13 @@ void Task::TuningLoopTask()
         std::cout << "Current Kp : " << kp << "\n";
         std::cout << "Current Kd : " << kd << "\n";
         std::cout << "Time for Sine period : " << sine_t << "\n";
-         std::cout << "Current Cycles : " << cycles << "\n";
+        std::cout << "Current Cycles : " << cycles << "\n";
         std::cout << "\n\n";
         std::cout << "Enter 'select', 'run', 'kp', 'kd', 'period', 'cycles', 'exit': \n";
         cout << "temp =" << temp << endl;
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
-        if (userInput == "run"&& !selectedMotor.empty())
+        if (userInput == "run" && !selectedMotor.empty())
         {
             Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
         }
@@ -1578,6 +1578,7 @@ void Task::CheckCurrentPosition()
             printf("\n");
 
             c_MotorAngle[j] = std::get<1>(parsedData);
+            motor->currentPos = std::get<1>(parsedData);
 
             cout << "Current Position of "
                  << "[" << motor_pair.first << "] : " << c_MotorAngle[j] << endl;
@@ -1662,5 +1663,32 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
         }
     }
 
+    Task::CheckCurrentPosition();
+
     Task::DeactivateSensor();
+}
+
+void Task::FixMotorPosition()
+{
+    struct can_frame frame;
+    Task::CheckCurrentPosition();
+    for (const auto &motorPair : tmotors)
+    {
+        std::string name = motorPair.first;
+        std::shared_ptr<TMotor> motor = motorPair.second;
+
+        TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, motor->currentPos, 0, 50, 1, 0);
+        sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
+                       [](const std::string &motorName, bool success)
+                       {
+                           if (success)
+                           {
+                               std::cout << "Position fixed for motor [" << motorName << "]." << std::endl;
+                           }
+                           else
+                           {
+                               std::cerr << "Failed to fix position for motor [" << motorName << "]." << std::endl;
+                           }
+                       });
+    }
 }
