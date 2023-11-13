@@ -30,8 +30,7 @@ void Task::operator()()
     GetMusicSheet();
     // GetReadyArr(sendBuffer);
     std::cout << "Start Ready. \n";
-    std::cout << "Buffersize : " << sendBuffer.size() << "\n";
-
+    
     std::string userInput;
     while (true)
     {
