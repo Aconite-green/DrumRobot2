@@ -29,6 +29,8 @@ public:
     CanFrameInfo getCanFrameForQuickStop();
     uint32_t nodeId;
 
+    double currentPos;
+
     float pMin, pMax;
     float vMin, vMax;
     float kpMin, kpMax;
