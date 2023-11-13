@@ -1298,7 +1298,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     }
 
     // CSV 파일명 설정
-    std::string csvFileName = "DrumData_in";
+    std::string csvFileName = "TuningData/DrumData_in";
 
     // CSV 파일 열기
     std::ofstream csvFile(csvFileName);
@@ -1484,7 +1484,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
         }
     }
 
-    parse_and_save_to_csv("DrumData_out");
+    parse_and_save_to_csv("TuningData/DrumData_out");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
