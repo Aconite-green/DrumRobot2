@@ -982,6 +982,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 
     c_MotorAngle = Qi;
 
+    /*
     // CSV 파일명 설정
     std::string csvFileName = "DrumReadyData_in";
 
@@ -1009,8 +1010,9 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 
     // CSV 파일 닫기
     csvFile.close();
-
+    
     std::cout << "준비동작 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
+    */
 
     //// 준비자세 동작
     while (sendBuffer.size() != 0)
@@ -1298,7 +1300,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     }
 
     // CSV 파일명 설정
-    std::string csvFileName = "TuningData/DrumData_in";
+    std::string csvFileName = "TuningData/DrumData_in.txt";
 
     // CSV 파일 열기
     std::ofstream csvFile(csvFileName);
@@ -1307,6 +1309,9 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     {
         std::cerr << "Error opening CSV file." << std::endl;
     }
+
+    // 헤더 추가
+    csvFile << "0x007,0x001,0x002,0x003,0x004,0x005,0x006\n";
 
     // 2차원 벡터의 데이터를 CSV 파일로 쓰기
     for (const auto &row : q)
@@ -1484,7 +1489,7 @@ void Task::RecieveLoopTask(queue<can_frame> &recieveBuffer)
         }
     }
 
-    parse_and_save_to_csv("TuningData/DrumData_out");
+    parse_and_save_to_csv("TuningData/DrumData_out.txt");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
