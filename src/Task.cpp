@@ -981,7 +981,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     c_MotorAngle = Qi;
 
     // CSV 파일명 설정
-    std::string csvFileName = "DrumData_in";
+    std::string csvFileName = "DrumReadyData_in";
 
     // CSV 파일 열기
     std::ofstream csvFile(csvFileName);
@@ -1296,7 +1296,7 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     }
 
     // CSV 파일명 설정
-    std::string csvFileName = "q_input.csv";
+    std::string csvFileName = "DrumData_in";
 
     // CSV 파일 열기
     std::ofstream csvFile(csvFileName);
@@ -1339,7 +1339,7 @@ void Task::parse_and_save_to_csv(const std::string &csv_file_name)
     // CSV 파일 열기. 파일이 없으면 새로 생성됩니다.
     std::ofstream ofs(csv_file_name, std::ios::app);
     int id;
-    float position;
+    float position, speed, torque;
 
     if (!ofs.is_open())
     {
@@ -1367,10 +1367,12 @@ void Task::parse_and_save_to_csv(const std::string &csv_file_name)
                 std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frame);
                 id = std::get<0>(parsedData);
                 position = std::get<1>(parsedData);
+                speed = std::get<2>(parsedData);
+                torque = std::get<3>(parsedData);
 
                 ofs << "0x" << std::hex << std::setw(4) << std::setfill('0') << id << ","
                     << std::dec
-                    << position << "\n";
+                    << position <<","<<speed<<","<<torque  <<"\n";
             }
         }
     }
