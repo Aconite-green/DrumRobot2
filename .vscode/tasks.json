@@ -11,7 +11,7 @@
                 "-g",
                 "${workspaceFolder}/src/*.o",
                 "-o",
-                "${workspaceFolder}/src/${fileBasenameNoExtension}",
+                "${workspaceFolder}/src/main.out", // 여기를 수정
                 "-I${workspaceFolder}/include",
                 "-L${workspaceFolder}/lib",
                 "-lUSBIO_64",

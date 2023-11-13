@@ -30,7 +30,7 @@ void Task::operator()()
     GetMusicSheet();
     // GetReadyArr(sendBuffer);
     std::cout << "Start Ready. \n";
-    
+
     std::string userInput;
     while (true)
     {
@@ -362,12 +362,19 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
     ss << "kp_" << kp << "_kd_" << kd << "_period_" << sine_t << ".csv";
 
     // 파일 이름 자동 설정
-    std::string folderName = "data";
+    std::string folderName = "TuningData";
     std::string baseName = ss.str(); // ss.str()로 stringstream의 내용을 std::string으로 가져옵니다.
     fileName = folderName + "/" + baseName;
 
     // CSV 파일을 쓰기 모드로 열기
+
     std::ofstream csvFile(fileName);
+    if (!csvFile.is_open())
+    {
+        std::cerr << "Failed to open file: " << fileName << std::endl;
+        return; // 또는 다른 오류 처리
+    }
+
     csvFile << "CAN_ID,p_des,p_act,tff_des,tff_act\n"; // CSV 헤더
 
     struct can_frame frame;
@@ -452,6 +459,11 @@ void Task::TuningLoopTask()
     std::stringstream ss;
     std::string fileName;
 
+    if (!tmotors.empty())
+    {
+        selectedMotor = tmotors.begin()->first;
+    }
+
     ss << std::fixed << std::setprecision(2); // 소수점 둘째 자리까지만
     ss << "kp_" << kp << "_kd_" << kd << "_period_" << sine_t << ".csv";
 
@@ -481,17 +493,29 @@ void Task::TuningLoopTask()
         std::cout << "Current Cycles : " << cycles << "\n";
         std::cout << "\n\n";
         std::cout << "Enter 'select', 'run', 'kp', 'kd', 'period', 'cycles', 'exit': \n";
-        cout << "temp =" << temp << endl;
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
-        if (userInput == "run" && !selectedMotor.empty())
+        if (userInput == "run")
         {
             Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
         }
         else if (userInput == "select")
         {
-            std::cout << "Enter the name of the motor to tune: ";
-            std::cin >> selectedMotor;
+            while (true) // 무한 루프를 사용하여 올바른 입력을 받을 때까지 반복
+            {
+                std::cout << "Enter the name of the motor to tune: ";
+                std::cin >> selectedMotor;
+
+                // tmotors 맵에 입력된 모터 이름이 존재하는지 확인
+                if (tmotors.find(selectedMotor) != tmotors.end())
+                {
+                    break; // 올바른 모터 이름이 입력되면 루프 탈출
+                }
+                else
+                {
+                    std::cout << "Invalid motor name. Please enter a valid motor name.\n";
+                }
+            }
         }
         else if (userInput == "kp")
         {
