@@ -877,7 +877,8 @@ void Task::GetMusicSheet()
 
     /////////// 드럼로봇 악기정보 텍스트 -> 딕셔너리 변환
     map<string, int> instrument_mapping = {
-        {"0", 10}, {"1", 3}, {"2", 6}, {"3", 7}, {"4", 9}, {"5", 4}, {"6", 5}, {"7", 4}, {"8", 8}, {"11", 3}, {"51", 3}, {"61", 3}, {"71", 3}, {"81", 3}, {"91", 3}};
+        {"0", 10}, {"1", 3}, {"2", 6}, {"3", 7}, {"4", 9}, {"5", 4}, {"6", 5}, {"7", 4}, {"8", 8}, {"11", 3}, {"51", 3}, {"61", 3}, {"71", 3}, {"81", 3}, {"91", 3}
+    };
 
     string score_path = "../include/codeConfession.txt";
 
@@ -943,15 +944,12 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         Qi = connect(c_MotorAngle, standby, k, n);
         q_ready.push_back(Qi);
 
-        int j = 4; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
-            float p_des = Qi[j];
+            float p_des = Qi[motor_mapping[entry.first]];
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
-
-            j++;
         }
         // cout << "\n";
     }
@@ -959,7 +957,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     c_MotorAngle = Qi;
 
     // CSV 파일명 설정
-    std::string csvFileName = "q_ready_input.csv";
+    std::string csvFileName = "DrumData_in";
 
     // CSV 파일 열기
     std::ofstream csvFile(csvFileName);
@@ -1095,6 +1093,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
     p_R = c_R;
     p_L = c_L;
 
+
     vector<double> Qi;
     double timest = time_arr[line] / 2;
     int n = round(timest / 0.005);
@@ -1103,15 +1102,12 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Qi = connect(c_MotorAngle, Q[0], k, n);
         q.push_back(Qi);
 
-        int j = 4;
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
-            float p_des = Qi[j];
+            float p_des = Qi[motor_mapping[entry.first]];
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
-
-            j++;
         }
         // cout << "\n";
     }
@@ -1120,15 +1116,12 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Qi = connect(Q[0], Q[1], k, n);
         q.push_back(Qi);
 
-        int j = 4; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
-            float p_des = Qi[j];
+            float p_des = Qi[motor_mapping[entry.first]];
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
-
-            j++;
         }
         // cout << "\n";
     }
@@ -1154,15 +1147,12 @@ void Task::GetBackArr()
         Qi = connect(c_MotorAngle, Q0, k, n);
         q_finish.push_back(Qi);
 
-        int j = 4; // motor num
         for (auto &entry : tmotors)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
-            float p_des = Qi[j];
+            float p_des = Qi[motor_mapping[entry.first]];
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
             sendBuffer.push(frame);
-
-            j++;
         }
         // cout << "\n";
     }
@@ -1537,7 +1527,6 @@ void Task::CheckCurrentPosition()
         }
     }
 
-    int j = 1; // motor num
     for (auto &motor_pair : tmotors)
     {
         std::shared_ptr<TMotor> &motor = motor_pair.second;
@@ -1576,18 +1565,16 @@ void Task::CheckCurrentPosition()
             }
             printf("\n");
 
-            c_MotorAngle[j] = std::get<1>(parsedData);
+            c_MotorAngle[motor_mapping[motor_pair.first]] = std::get<1>(parsedData);
             motor->currentPos = std::get<1>(parsedData);
 
             cout << "Current Position of "
-                 << "[" << motor_pair.first << "] : " << c_MotorAngle[j] << endl;
+                 << "[" << motor_pair.first << "] : " << c_MotorAngle[motor_mapping[motor_pair.first]] << endl;
         }
         else
         {
             std::cerr << "Socket not found for interface: " << interface_name << std::endl;
         }
-
-        j++;
     }
 }
 
