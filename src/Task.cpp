@@ -114,7 +114,7 @@ void Task::ActivateControlTask()
     for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
-        if (set_socket_timeout(hsocket, 2, 0) != 0)
+        if (set_socket_timeout(hsocket, 5, 0) != 0)
         {
             // 타임아웃 설정 실패 처리
             std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
@@ -155,6 +155,21 @@ void Task::ActivateControlTask()
                                else
                                {
                                    std::cerr << "Failed to set control mode for motor [" << motorName << "]." << std::endl;
+                               }
+                           });
+
+             // 제어 모드 설정
+            fillCanFrameFromInfo(&frame, motor->getCanFrameForZeroing());
+            sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
+                           [](const std::string &motorName, bool success)
+                           {
+                               if (success)
+                               {
+                                   std::cout << "Zero set for motor [" << motorName << "]." << std::endl;
+                               }
+                               else
+                               {
+                                   std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
                                }
                            });
 
@@ -328,8 +343,6 @@ void Task::DeactivateControlTask()
 
                                 });
 
-
-
             // 구분자 추가
             std::cout << "=======================================" << std::endl;
         }
@@ -400,7 +413,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                 std::shared_ptr<TMotor> &motor = entry.second;
 
                 float local_time = std::fmod(time, sine_t);
-                float p_des = (1 - cosf(2 * M_PI * local_time / sine_t)) * M_PI / 2;
+                float p_des = -(1 - cosf(2 * M_PI * local_time / sine_t)) * M_PI / 4;
 
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
                 csvFile << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId << ',' << std::dec << p_des;
@@ -903,8 +916,7 @@ void Task::GetMusicSheet()
 
     /////////// 드럼로봇 악기정보 텍스트 -> 딕셔너리 변환
     map<string, int> instrument_mapping = {
-        {"0", 10}, {"1", 3}, {"2", 6}, {"3", 7}, {"4", 9}, {"5", 4}, {"6", 5}, {"7", 4}, {"8", 8}, {"11", 3}, {"51", 3}, {"61", 3}, {"71", 3}, {"81", 3}, {"91", 3}
-    };
+        {"0", 10}, {"1", 3}, {"2", 6}, {"3", 7}, {"4", 9}, {"5", 4}, {"6", 5}, {"7", 4}, {"8", 8}, {"11", 3}, {"51", 3}, {"61", 3}, {"71", 3}, {"81", 3}, {"91", 3}};
 
     string score_path = "../include/codeConfession.txt";
 
@@ -1010,7 +1022,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
 
     // CSV 파일 닫기
     csvFile.close();
-    
+
     std::cout << "준비동작 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
     */
 
@@ -1120,7 +1132,6 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 
     p_R = c_R;
     p_L = c_L;
-
 
     vector<double> Qi;
     double timest = time_arr[line] / 2;
@@ -1379,7 +1390,7 @@ void Task::parse_and_save_to_csv(const std::string &csv_file_name)
 
                 ofs << "0x" << std::hex << std::setw(4) << std::setfill('0') << id << ","
                     << std::dec
-                    << position <<","<<speed<<","<<torque  <<"\n";
+                    << position << "," << speed << "," << torque << "\n";
             }
         }
     }
@@ -1546,7 +1557,7 @@ void Task::DeactivateSensor()
 
 void Task::CheckCurrentPosition()
 {
-    canUtils.restart_all_can_ports();
+
     struct can_frame frameToProcess;
     struct can_frame frameToRecieve;
 
@@ -1562,6 +1573,8 @@ void Task::CheckCurrentPosition()
 
     for (auto &motor_pair : tmotors)
     {
+
+        canUtils.restart_all_can_ports();
         std::shared_ptr<TMotor> &motor = motor_pair.second;
         auto interface_name = motor->interFaceName;
 
@@ -1602,7 +1615,7 @@ void Task::CheckCurrentPosition()
             motor->currentPos = std::get<1>(parsedData);
 
             cout << "Current Position of "
-                 << "[" << motor_pair.first << "] : " << c_MotorAngle[motor_mapping[motor_pair.first]] << endl;
+                 << "[" << motor_pair.first << "] : " << motor->currentPos << endl;
         }
         else
         {
