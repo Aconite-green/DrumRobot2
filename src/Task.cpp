@@ -39,7 +39,7 @@ void Task::operator()()
         {
             std::cout << "error during sys function";
         }*/
-        std::cout << "Enter 'ready', 'run','exit','test': ";
+        std::cout << "Enter 'home', 'ready', 'run','exit','test': ";
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
 
@@ -47,6 +47,14 @@ void Task::operator()()
         {
             break;
             state = Terminate;
+        }
+        else if(userInput == "home"){
+             int result = system("clear");
+            if (result != 0)
+            {
+                std::cout << "error during sys function";
+            }
+            SetHome();
         }
         else if (userInput == "ready")
         {
@@ -1624,7 +1632,7 @@ void Task::CheckCurrentPosition()
     }
 }
 
-void Task::SetHome(const std::map<std::string, int> &sockets)
+void Task::SetHome()
 {
     struct can_frame frameToProcess;
     Task::ActivateSensor();
@@ -1648,9 +1656,9 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
         // 해당 모터를 0.2rad/sec로 이동시킴
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2, 0, 5, 0);
         // 모터에 연결된 canport를 사용해 신호를 보냄
-        if (sockets.find(interface_name) != sockets.end())
+        if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
         {
-            int socket_descriptor = sockets.at(interface_name);
+            int socket_descriptor = canUtils.sockets.at(interface_name);
             ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
 
             if (bytesWritten == -1)
@@ -1678,7 +1686,7 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
 
                     // 모터를 멈추는 신호를 보냄
                     TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
-                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
                                    [](const std::string &motorName, bool success)
                                    {
                                        if (success)
@@ -1692,7 +1700,7 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
                                    });
                     // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
                     fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
-                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
                                    [](const std::string &motorName, bool success)
                                    {
                                        if (success)
@@ -1720,7 +1728,7 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
                         // 5ms마다 목표 위치 계산 및 프레임 전송
                         double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps);
                         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 50, 1, targetPosition, 8, 0);
-                        ssize_t bytesWritten = write(sockets.at(interface_name), &frameToProcess, sizeof(struct can_frame));
+                        ssize_t bytesWritten = write(canUtils.sockets.at(interface_name), &frameToProcess, sizeof(struct can_frame));
                         if (bytesWritten == -1)
                         {
                             std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
