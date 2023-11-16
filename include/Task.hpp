@@ -154,7 +154,7 @@ private:
     void DeactivateSensor();
 
     // Functions for Homing Mode
-    void SetHome(const std::map<std::string, int> &sockets);
+    void SetHome();
     void CheckCurrentPosition();
     void FixMotorPosition();
 };
