@@ -158,7 +158,7 @@ void Task::ActivateControlTask()
                                }
                            });
 
-             // 제어 모드 설정
+            // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForZeroing());
             sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success)
@@ -1243,13 +1243,13 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
 void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 {
-    ActivateSensor();
+
     struct can_frame frameToProcess;
     chrono::system_clock::time_point external = std::chrono::system_clock::now();
 
     while (state.load() != Terminate)
     {
-        SensorLoopTask(sensorBuffer);
+
         if (state.load() == Pause)
         {
             continue;
@@ -1343,7 +1343,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
     std::cout << "연주 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
 
-    DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
 
@@ -1662,40 +1661,30 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
                 {
                     cout << motor_pair.first << "is at Home location" << endl;
 
-                    // 상태 확인
-                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForQuickStop());
-                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "Motor [" << motorName << "] stopped for homing process" << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Motor [" << motorName << "] fail to stop for homing process " << std::endl;
-                                       }
-                                   });
-                    // 상태 확인
-                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
-                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "zero set for motor [" << motorName << "]." << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
-                                       }
-                                   });
+                    chrono::system_clock::time_point external = std::chrono::system_clock::now();
+                    while (true)
+                    {
+                        chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+                        chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
+                        if (elapsed_time.count() >= 5000)
+                        {
+                            external = std::chrono::system_clock::now();
+
+                            if (sockets.find(interface_name) != sockets.end())
+                            {
+                                int socket_descriptor = sockets.at(interface_name);
+                                ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
+                            }
+                            else
+                            {
+                                std::cerr << "Socket not found for interface: " << interface_name << std::endl;
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-
-    Task::CheckCurrentPosition();
 
     Task::DeactivateSensor();
 }
