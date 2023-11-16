@@ -21,7 +21,7 @@ struct CanFrameInfo
 class TMotor
 {
 public:
-    TMotor(uint32_t nodeId, const std::string &motorType, const std::string &interFaceName);
+    TMotor(uint32_t nodeId, const std::string &motorType, const std::string &interFaceName, double Kp, double Kd);
     CanFrameInfo getCanFrameForCheckMotor();
     CanFrameInfo getCanFrameForControlMode();
     CanFrameInfo getCanFrameForExit();
@@ -30,6 +30,9 @@ public:
     uint32_t nodeId;
 
     double currentPos;
+
+    double Kp;
+    double Kd;
 
     float pMin, pMax;
     float vMin, vMax;

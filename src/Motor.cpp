@@ -2,8 +2,8 @@
 #include "../include/Motor.hpp" // Include header file
 #include <iostream>
 
-TMotor::TMotor(uint32_t nodeId, const std::string &motorType, const std::string &interFaceName)
-    : nodeId(nodeId), motorType(motorType), interFaceName(interFaceName) // 멤버 변수 초기화
+TMotor::TMotor(uint32_t nodeId, const std::string &motorType, const std::string &interFaceName, double Kp, double Kd)
+    : nodeId(nodeId), motorType(motorType), interFaceName(interFaceName), Kp(Kp), Kd(Kd) // 멤버 변수 초기화
 {
     // 공통된 초기값 설정
     pMin = -12.5;
