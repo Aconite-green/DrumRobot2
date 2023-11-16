@@ -17,6 +17,7 @@ int main()
 {
     // Motor Declariration
     std::map<std::string, std::shared_ptr<TMotor>, CustomCompare> tmotors;
+    
     tmotors["waist"] = make_shared<TMotor>(0x007, "AK10_9", "can0", 200, 0.4);
 
     //tmotors["R_arm1"] = make_shared<TMotor>(0x001, "AK70_10", "can0", 50, 1);
@@ -26,6 +27,7 @@ int main()
     //tmotors["R_arm3"] = make_shared<TMotor>(0x004, "AK70_10", "can0", 50, 1);
     tmotors["L_arm2"] = make_shared<TMotor>(0x005, "AK70_10", "can0", 50, 1);
     tmotors["L_arm3"] = make_shared<TMotor>(0x006, "AK70_10", "can0", 50, 1);
+
 
     map<string, shared_ptr<MaxonMotor>> maxonMotors;
     /*maxonMotors["a_maxon"] = make_shared<MaxonMotor>(0x001,

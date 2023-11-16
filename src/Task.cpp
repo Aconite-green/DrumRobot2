@@ -28,75 +28,88 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
-    // GetReadyArr(sendBuffer);
     std::cout << "Start Ready. \n";
+    bool isHomeSet = false; // Home 설정 상태
 
-    std::string userInput;
     while (true)
     {
-        /*int result = system("clear");
+        // 화면 클리어
+        int result = system("clear");
         if (result != 0)
         {
-            std::cout << "error during sys function";
-        }*/
-        std::cout << "Enter 'ready', 'run','exit','test': ";
-        std::cin >> userInput;
-        std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
+            std::cerr << "Error during clear screen" << std::endl;
+        }
 
-        if (userInput == "exit")
+        // UI/UX 개선을 위한 화면 디자인
+        std::cout << "========================================\n"
+                     "DrumRobot Control Panel\n"
+                     "========================================\n"
+                     "[H] Home - Initialize motor positions"
+                  << (isHomeSet ? " (Set)" : "") << "\n"
+                                                    "[R] Ready - Prepare the arrangement\n"
+                                                    "[P] Perform - Start the performance\n"
+                                                    "[T] Test - Enter test mode\n"
+                                                    "[C] Check - Check current motor positions\n"
+                                                    "[E] Exit - Terminate the program\n"
+                                                    "========================================\n"
+                                                    "Enter your choice: ";
+
+        char userInput;
+        std::cin >> userInput;
+        userInput = std::tolower(userInput);
+
+        if (userInput == 'e')
         {
             break;
             state = Terminate;
         }
-        else if (userInput == "ready")
+        else if (userInput == 'h')
         {
-            int result = system("clear");
-            if (result != 0)
-            {
-                std::cout << "error during sys function";
-            }
-
+            SetHome();
+            isHomeSet = true;
+        }
+        else if (userInput == 'r')
+        {
             std::cout << "Setting ...... \n";
-
             GetReadyArr(sendBuffer);
         }
-        else if (userInput == "run")
+        else if (userInput == 'p')
         {
             canUtils.restart_all_can_ports();
-            int result = system("clear");
-            if (result != 0)
-            {
-                std::cout << "error during sys function";
-            }
-
             std::cout << "Performing ...... \n";
-
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
             std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
-
             sendThread.join();
             readThread.join();
-
             std::cout << "........End performance \n";
         }
-        else if (userInput == "test")
+        else if (userInput == 't')
         {
             Task::FixMotorPosition();
             while (true)
             {
-
-                std::cout << "Enter 'tuning','exit' :";
+                std::cout << "Enter [T]uning, [E]xit: ";
                 std::cin >> userInput;
-                std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
-                if (userInput == "tuning")
+                userInput = std::tolower(userInput);
+                if (userInput == 't')
                 {
                     TuningLoopTask();
                 }
-                else if (userInput == "exit")
+                else if (userInput == 'e')
                 {
                     break;
                 }
             }
+        }
+        else if (userInput == 'c') // Check current motor positions
+        {
+            do
+            {
+                CheckCurrentPosition();
+                std::cout << "Do you want to check again? (y/n): ";
+                std::cin >> userInput;
+                userInput = std::tolower(userInput);
+            } while (userInput == 'y');
         }
     }
     DeactivateControlTask();
@@ -158,7 +171,7 @@ void Task::ActivateControlTask()
                                }
                            });
 
-             // 제어 모드 설정
+            // 제어 모드 설정
             fillCanFrameFromInfo(&frame, motor->getCanFrameForZeroing());
             sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                            [](const std::string &motorName, bool success)
@@ -465,58 +478,52 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
 
 void Task::TuningLoopTask()
 {
-    std::string userInput, selectedMotor;
+    std::string userInput, selectedMotor, fileName;
     float kp = 50.0;
     float kd = 1.0;
     float sine_t = 4.0;
     int cycles = 4;
-
-    std::stringstream ss;
-    std::string fileName;
 
     if (!tmotors.empty())
     {
         selectedMotor = tmotors.begin()->first;
     }
 
-    ss << std::fixed << std::setprecision(2); // 소수점 둘째 자리까지만
-    ss << "kp_" << kp << "_kd_" << kd << "_period_" << sine_t << ".csv";
-
-    // 파일 이름 자동 설정
-    std::string folderName = "data";
-    std::string baseName = ss.str(); // ss.str()로 stringstream의 내용을 std::string으로 가져옵니다.
-    fileName = folderName + "/" + baseName;
-
     while (true)
     {
         int result = system("clear");
         if (result != 0)
         {
-            printf("error using sys function\n");
-        }
-        // tmotors에 있는 모터 목록 출력
-        std::cout << "Available motors: \n";
-        for (const auto &motor : tmotors)
-        {
-            std::cout << motor.first << " (" << motor.second->motorType << ")" << std::endl;
+            std::cerr << "Error during clear screen" << std::endl;
         }
 
-        std::cout << "\nCurrently selected motor: " << selectedMotor << "\n";
-        std::cout << "Current Kp : " << kp << "\n";
-        std::cout << "Current Kd : " << kd << "\n";
-        std::cout << "Time for Sine period : " << sine_t << "\n";
-        std::cout << "Current Cycles : " << cycles << "\n";
-        std::cout << "\n\n";
-        std::cout << "Enter 'select', 'run', 'kp', 'kd', 'period', 'cycles', 'exit': \n";
+        std::cout << "================ Tuning Menu ================\n";
+        std::cout << "Available Motors:\n";
+        for (const auto &motor_pair : tmotors)
+        {
+            std::cout << " - " << motor_pair.first << "\n";
+        }
+        std::cout << "---------------------------------------------\n";
+        std::cout << "Selected Motor: " << selectedMotor << "\n";
+        std::cout << "Kp: " << kp << " | Kd: " << kd << "\n";
+        std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << "\n";
+        std::cout << "\nCommands:\n";
+        std::cout << "[S]elect Motor | [KP] | [KD]\n";
+        std::cout << "[P]eriod | [C]ycles | [R]un | [E]xit\n";
+        std::cout << "=============================================\n";
+        std::cout << "Enter Command: ";
         std::cin >> userInput;
         std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
-        if (userInput == "run")
+
+        if (userInput[0] == 'e')
         {
-            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
+            break;
         }
-        else if (userInput == "select")
+        else if (userInput[0] == 's')
         {
-            while (true) // 무한 루프를 사용하여 올바른 입력을 받을 때까지 반복
+            std::cout << "Enter the name of the motor to tune: ";
+            std::cin >> selectedMotor;
+            if (tmotors.find(selectedMotor) == tmotors.end())
             {
                 std::cout << "Enter the name of the motor to tune: ";
                 std::cin >> selectedMotor;
@@ -545,28 +552,27 @@ void Task::TuningLoopTask()
         }
         else if (userInput == "kp")
         {
-            std::cout << "Current Kp : " << kp << "\n";
-            std::cout << "Enter Desired Kp : "
-                      << "\n";
+            std::cout << "Enter Desired Kp: ";
             std::cin >> kp;
         }
         else if (userInput == "kd")
         {
-            std::cout << "Current Kd : " << kd << "\n";
-            std::cout << "Enter Desired Kd : "
-                      << "\n";
+            std::cout << "Enter Desired Kd: ";
             std::cin >> kd;
         }
-        else if (userInput == "period")
+        else if (userInput[0] == 'p')
         {
-            std::cout << "Current Time for Sine period : " << sine_t << "\n";
-            std::cout << "Enter Desired Sine period : "
-                      << "\n";
+            std::cout << "Enter Desired Sine Period: ";
             std::cin >> sine_t;
         }
-        else if (userInput == "exit")
+        else if (userInput[0] == 'c')
         {
-            break;
+            std::cout << "Enter Desired Cycles: ";
+            std::cin >> cycles;
+        }
+        else if (userInput[0] == 'r')
+        {
+            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
         }
     }
 }
@@ -1254,13 +1260,13 @@ void Task::writeToSocket(MotorMap &motorMap, std::queue<can_frame> &sendBuffer, 
 
 void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 {
-    ActivateSensor();
+
     struct can_frame frameToProcess;
     chrono::system_clock::time_point external = std::chrono::system_clock::now();
 
     while (state.load() != Terminate)
     {
-        SensorLoopTask(sensorBuffer);
+
         if (state.load() == Pause)
         {
             continue;
@@ -1354,7 +1360,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
     std::cout << "연주 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
 
-    DeactivateSensor();
     std::cout << "SendLoop terminated\n";
 }
 
@@ -1614,14 +1619,6 @@ void Task::CheckCurrentPosition()
 
             std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frameToRecieve);
 
-            // frameToProcess 출력 코드
-            printf("Data: ");
-            for (int i = 0; i < frameToRecieve.can_dlc; ++i)
-            {
-                printf("%02X ", static_cast<int>(frameToRecieve.data[i]));
-            }
-            printf("\n");
-
             c_MotorAngle[motor_mapping[motor_pair.first]] = std::get<1>(parsedData);
             motor->currentPos = std::get<1>(parsedData);
 
@@ -1635,21 +1632,42 @@ void Task::CheckCurrentPosition()
     }
 }
 
-void Task::SetHome(const std::map<std::string, int> &sockets)
+void Task::SetHome()
 {
     struct can_frame frameToProcess;
-    Task::ActivateSensor();
 
+    // Task::ActivateSensor();
+    for (const auto &socketPair : canUtils.sockets)
+    {
+        int hsocket = socketPair.second;
+        if (set_socket_timeout(hsocket, 5, 0) != 0)
+        {
+            // 타임아웃 설정 실패 처리
+            std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
+        }
+    }
     for (auto &motor_pair : tmotors)
     {
         std::shared_ptr<TMotor> &motor = motor_pair.second;
         auto interface_name = motor->interFaceName;
 
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2, 0, 5, 0);
+        // 사용자에게 해당 모터에 대한 홈 설정을 진행할지 묻기
+        char userResponse;
+        std::cout << "Would you like to start homing mode for motor [" << motor_pair.first << "]? (y/n): ";
+        std::cin >> userResponse;
 
-        if (sockets.find(interface_name) != sockets.end())
+        if (userResponse != 'y')
         {
-            int socket_descriptor = sockets.at(interface_name);
+            std::cout << "Skipping homing mode for motor [" << motor_pair.first << "]." << std::endl;
+            continue; // 다음 모터로 넘어가기
+        }
+
+        // 해당 모터를 0.2rad/sec로 이동시킴
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2, 0, 4.5, 0);
+        // 모터에 연결된 canport를 사용해 신호를 보냄
+        if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
+        {
+            int socket_descriptor = canUtils.sockets.at(interface_name);
             ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
 
             if (bytesWritten == -1)
@@ -1663,33 +1681,39 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
             std::cerr << "Socket not found for interface: " << interface_name << std::endl;
         }
 
-        while (true)
+        cout << "Turning for five seconds\n";
+        sleep(5);
+        bool breakOut = false;
+        while (!breakOut)
         {
-            USBIO_DI_ReadValue(DevNum, &DIValue);
+            // 모터를 이동시킨후에 while문 안에들어가 근접센서로부터 값을 계속 읽어들임
+            // USBIO_DI_ReadValue(DevNum, &DIValue);
 
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 1; i++)
             {
-                if ((DIValue >> i) & 1)
-                {
-                    cout << motor_pair.first << "is at Home location" << endl;
 
-                    // 상태 확인
-                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForQuickStop());
-                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                // 센서에 인식되면
+                if (true /*(DIValue >> i) & 1*/)
+                {
+                    cout << motor_pair.first << " is at Sensor location" << endl;
+
+                    // 모터를 멈추는 신호를 보냄
+                    TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
                                    [](const std::string &motorName, bool success)
                                    {
                                        if (success)
                                        {
-                                           std::cout << "Motor [" << motorName << "] stopped for homing process" << std::endl;
+                                           std::cout << "Motor [" << motorName << "] stopped for starting homing process" << std::endl;
                                        }
                                        else
                                        {
-                                           std::cerr << "Motor [" << motorName << "] fail to stop for homing process " << std::endl;
+                                           std::cerr << "Motor [" << motorName << "] fail to stop for starting homing process " << std::endl;
                                        }
                                    });
-                    // 상태 확인
+                    // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
                     fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
-                    sendAndReceive(sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
                                    [](const std::string &motorName, bool success)
                                    {
                                        if (success)
@@ -1701,14 +1725,99 @@ void Task::SetHome(const std::map<std::string, int> &sockets)
                                            std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
                                        }
                                    });
+
+                    cout << "\nPress Enter to move to Home Position\n";
+                    getchar();
+                    const double targetRadian = -M_PI / 2;
+                    int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
+
+                    auto startTime = std::chrono::system_clock::now();
+                    for (int step = 0; step < totalSteps; ++step)
+                    {
+                        auto currentTime = std::chrono::system_clock::now();
+                        while (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() < 5)
+                        {
+                            // 5ms가 되기 전까지 기다림
+                            currentTime = std::chrono::system_clock::now();
+                        }
+
+                        // 5ms마다 목표 위치 계산 및 프레임 전송
+                        double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps);
+                        double currentPositionDegrees = targetPosition * (180 / M_PI); // 라디안을 도로 변환
+
+                        for (int percentage = 10; percentage <= 100; percentage += 10)
+                        {
+                            if (step == (totalSteps * percentage / 100))
+                            {
+                                cout << "Current angle at " << percentage << "% step: " << currentPositionDegrees << " degrees" << endl;
+                            }
+                        }
+
+                        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 50, 1, 0);
+                        ssize_t bytesWritten = write(canUtils.sockets.at(interface_name), &frameToProcess, sizeof(struct can_frame));
+                        if (bytesWritten == -1)
+                        {
+                            std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
+                        }
+
+                        // 다음 5ms 간격을 위해 시작 시간 업데이트
+                        startTime = std::chrono::system_clock::now();
+                    }
+
+                    cout << "----------------------moved 90 degree (Anti clock wise) --------------------------------- \n";
+                    // 모터를 멈추는 신호를 보냄
+                    TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                                   [](const std::string &motorName, bool success)
+                                   {
+                                       if (success)
+                                       {
+                                           std::cout << "Motor [" << motorName << "] stopped for setting home process" << std::endl;
+                                       }
+                                       else
+                                       {
+                                           std::cerr << "Motor [" << motorName << "] fail to stop for setting home process " << std::endl;
+                                       }
+                                   });
+                    // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
+                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                                   [](const std::string &motorName, bool success)
+                                   {
+                                       if (success)
+                                       {
+                                           std::cout << "zero set for motor [" << motorName << "]." << std::endl;
+                                       }
+                                       else
+                                       {
+                                           std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
+                                       }
+                                   });
+                    // 상태 확인
+                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
+                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
+                                   [](const std::string &motorName, bool success)
+                                   {
+                                       if (success)
+                                       {
+                                           std::cout << "Motor [" << motorName << "] status check passed." << std::endl;
+                                       }
+                                       else
+                                       {
+                                           std::cerr << "Motor [" << motorName << "] status check failed." << std::endl;
+                                       }
+                                   });
+
+                    breakOut = true;
+
+                    break;
                 }
             }
         }
     }
 
-    Task::CheckCurrentPosition();
-
-    Task::DeactivateSensor();
+    cout << "All in Home\n";
+    //  Task::DeactivateSensor();
 }
 
 void Task::FixMotorPosition()

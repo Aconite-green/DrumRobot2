@@ -174,7 +174,7 @@ void CanSocketUtils::restart_all_can_ports()
     for (const auto &port : ifnames)
     {
         down_port(port.c_str());
-        printf("Port '%s' is down.\n", port.c_str()); // 포트가 다운됨을 알림
+        
 
         int socket_fd = sockets[port];
         if (socket_fd >= 0)
@@ -189,7 +189,7 @@ void CanSocketUtils::restart_all_can_ports()
     {
         usleep(100000); // 100ms 대기
         activate_port(port.c_str());
-        printf("Activating port '%s'.\n", port.c_str()); // 포트 활성화 중
+        
 
         int new_socket_fd = create_socket(port);
         if (new_socket_fd < 0)
@@ -200,7 +200,6 @@ void CanSocketUtils::restart_all_can_ports()
         else
         {
             sockets[port] = new_socket_fd;                               // 소켓 디스크립터 값을 업데이트합니다.
-            printf("New socket created for port '%s'.\n", port.c_str()); // 새 소켓 생성 완료
         }
     }
 }
