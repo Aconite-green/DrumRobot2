@@ -1614,7 +1614,8 @@ void Task::SetHome()
 {
     struct can_frame frameToProcess;
 
-    // Task::ActivateSensor();
+    Task::ActivateSensor();
+    getchar();
     for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
@@ -1659,21 +1660,20 @@ void Task::SetHome()
             std::cerr << "Socket not found for interface: " << interface_name << std::endl;
         }
 
-        cout << "Turning for five seconds\n";
-        sleep(5);
+        cout << "Turning for sensing location\n";
         bool breakOut = false;
         while (!breakOut)
         {
             // 모터를 이동시킨후에 while문 안에들어가 근접센서로부터 값을 계속 읽어들임
-            // USBIO_DI_ReadValue(DevNum, &DIValue);
+            USBIO_DI_ReadValue(DevNum, &DIValue);
 
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 8; i++)
             {
 
                 // 센서에 인식되면
-                if (true /*(DIValue >> i) & 1*/)
+                if ((DIValue >> i) & 1)
                 {
-                    cout << motor_pair.first << " is at Sensor location" << endl;
+                    cout << motor_pair.first << " is at Sensor location!" << endl;
 
                     // 모터를 멈추는 신호를 보냄
                     TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
@@ -1795,7 +1795,7 @@ void Task::SetHome()
     }
 
     cout << "All in Home\n";
-    //  Task::DeactivateSensor();
+    Task::DeactivateSensor();
 }
 
 void Task::FixMotorPosition()
