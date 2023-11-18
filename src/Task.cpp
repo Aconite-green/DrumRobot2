@@ -48,7 +48,7 @@ void Task::operator()()
                   << (isHomeSet ? " (Set)" : "") << "\n"
                                                     "[R] Ready - Prepare the arrangement\n"
                                                     "[P] Perform - Start the performance\n"
-                                                    "[T] Test - Enter test mode\n"
+                                                    "[T] Test - Enter tuning mode\n"
                                                     "[C] Check - Check current motor positions\n"
                                                     "[E] Exit - Terminate the program\n"
                                                     "========================================\n"
@@ -85,21 +85,7 @@ void Task::operator()()
         }
         else if (userInput == 't')
         {
-            Task::FixMotorPosition();
-            while (true)
-            {
-                std::cout << "Enter [T]uning, [E]xit: ";
-                std::cin >> userInput;
-                userInput = std::tolower(userInput);
-                if (userInput == 't')
-                {
-                    TuningLoopTask();
-                }
-                else if (userInput == 'e')
-                {
-                    break;
-                }
-            }
+            TuningLoopTask();
         }
         else if (userInput == 'c') // Check current motor positions
         {
@@ -370,7 +356,7 @@ void Task::DeactivateControlTask()
 // Functions for Testing
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles)
+void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType)
 {
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
     for (const auto &socketPair : canUtils.sockets)
@@ -407,9 +393,12 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
 
     struct can_frame frame;
 
+    float peakRadian = peakAngle * M_PI / 180.0; // 피크 각도를 라디안으로 변환
+    float amplitude = peakRadian;
+
     float sample_time = 0.005;
     int max_samples = static_cast<int>(sine_t / sample_time);
-    float v_des = 0;
+    float v_des = 0, p_des = 0;
     float tff_des = 0;
     float p_act, v_act, tff_act;
     for (int cycle = 0; cycle < cycles; cycle++)
@@ -426,8 +415,17 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                 std::shared_ptr<TMotor> &motor = entry.second;
 
                 float local_time = std::fmod(time, sine_t);
-                float p_des = -(1 - cosf(2 * M_PI * local_time / sine_t)) * M_PI / 4;
-
+                if (pathType == 1) // 1-cos 경로
+                {
+                    p_des = amplitude * (1 - cosf(2 * M_PI * local_time / sine_t));
+                }
+                else if (pathType == 2) // 1-cos 및 -1+cos 결합 경로
+                {
+                    if (local_time < sine_t / 2)
+                        p_des = amplitude * (1 - cosf(4 * M_PI * local_time / sine_t));
+                    else
+                        p_des = amplitude * (-1 + cosf(4 * M_PI * (local_time - sine_t / 2) / sine_t));
+                }
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
                 csvFile << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId << ',' << std::dec << p_des;
 
@@ -478,11 +476,12 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
 
 void Task::TuningLoopTask()
 {
+    FixMotorPosition();
     std::string userInput, selectedMotor, fileName;
-    float kp = 50.0;
-    float kd = 1.0;
+    float kp, kd, peakAngle;
     float sine_t = 4.0;
     int cycles = 2;
+    int pathType;
 
     if (!tmotors.empty())
     {
@@ -491,10 +490,21 @@ void Task::TuningLoopTask()
 
     while (true)
     {
+        Task::InitializeTuningParameters(selectedMotor, kp, kd, peakAngle, pathType);
         int result = system("clear");
         if (result != 0)
         {
             std::cerr << "Error during clear screen" << std::endl;
+        }
+
+        std::string pathTypeDescription;
+        if (pathType == 1)
+        {
+            pathTypeDescription = "1: 1 - cos (0 -> peak -> 0)";
+        }
+        else if (pathType == 2)
+        {
+            pathTypeDescription = "2: 1 - cos & cos - 1 (0 -> peak -> 0 -> -peak -> 0)";
         }
 
         std::cout << "================ Tuning Menu ================\n";
@@ -507,8 +517,9 @@ void Task::TuningLoopTask()
         std::cout << "Selected Motor: " << selectedMotor << "\n";
         std::cout << "Kp: " << kp << " | Kd: " << kd << "\n";
         std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << "\n";
+        std::cout << "Peak Angle: " << peakAngle << " | Path Type: " << pathTypeDescription << "\n";
         std::cout << "\nCommands:\n";
-        std::cout << "[S]elect Motor | [KP] | [KD]\n";
+        std::cout << "[S]elect Motor | [KP] | [KD] | [Peak] | [Type]\n";
         std::cout << "[P]eriod | [C]ycles | [R]un | [E]xit\n";
         std::cout << "=============================================\n";
         std::cout << "Enter Command: ";
@@ -550,100 +561,49 @@ void Task::TuningLoopTask()
         }
         else if (userInput[0] == 'r')
         {
-            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
+            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles, peakAngle, pathType);
+        }
+        else if (userInput == "peak")
+        {
+            std::cout << "Enter Desired Peak Angle: ";
+            std::cin >> peakAngle;
+        }
+        else if (userInput == "type")
+        {
+            std::cout << "Select Path Type:\n";
+            std::cout << "1: 1 - cos (0 -> peak -> 0)\n";
+            std::cout << "2: 1 - cos & cos - 1 (0 -> peak -> 0 -> -peak -> 0)\n";
+            std::cout << "Enter Path Type (1 or 2): ";
+            std::cin >> pathType;
+
+            if (pathType != 1 && pathType != 2)
+            {
+                std::cout << "Invalid path type. Please enter 1 or 2.\n";
+                pathType = 1; // 기본값으로 재설정
+            }
         }
     }
 }
 
-void Task::PeriodicMotionTester(queue<can_frame> &sendBuffer)
+void Task::InitializeTuningParameters(const std::string selectedMotor, float &kp, float &kd, float &peakAngle, int &pathType)
 {
-    std::map<std::string, std::pair<float, float>> motor_configurations = {
-        {"1_waist", {8, Tdegree_180}},
-        {"2_R_arm1", {8, Tdegree_180}},
-        {"3_L_arm1", {8, Tdegree_180}},
-        {"4_R_arm2", {8, Tdegree_180}},
-        {"5_R_arm3", {8, Tdegree_180}},
-        {"6_L_arm2", {8, Tdegree_180}},
-        {"7_L_arm3", {8, Tdegree_180}},
-        {"a_maxon", {8, Mdegree_180}},
-        {"b_maxon", {8, Mdegree_180}}};
-
-    struct can_frame frame;
-    if ((tmotors.size() + maxonMotors.size()) != motor_configurations.size())
+    if (selectedMotor == "waist")
     {
-        std::cerr << "Error: The number of motors does not match the number of total_times entries.\n";
-        return;
+        kp = 200.0;
+        kd = 1.0;
+        peakAngle = 30;
+        pathType = 2;
     }
-
-    float sample_time = 0.005;
-    int cycles = 5;
-    float max_time = std::max_element(motor_configurations.begin(), motor_configurations.end(),
-                                      [](const auto &a, const auto &b)
-                                      {
-                                          return a.second.first < b.second.first;
-                                      })
-                         ->second.first;
-
-    int max_samples = static_cast<int>(max_time / sample_time);
-
-    for (int cycle = 0; cycle < cycles; cycle++)
+    else if (selectedMotor == "R_arm1" || selectedMotor == "L_arm1" ||
+             selectedMotor == "R_arm2" || selectedMotor == "R_arm3" ||
+             selectedMotor == "L_arm2" || selectedMotor == "L_arm3")
     {
-        for (int i = 0; i < max_samples; i++)
-        {
-            float time = i * sample_time;
-
-            for (auto &entry : tmotors)
-            {
-                const std::string &motor_name = entry.first;
-                std::shared_ptr<TMotor> &motor = entry.second;
-
-                auto config_itr = motor_configurations.find(motor_name);
-                if (config_itr == motor_configurations.end())
-                {
-                    std::cerr << "Error: Configuration for motor " << motor_name << " not found.\n";
-                    continue;
-                }
-
-                float period = config_itr->second.first;
-                float amplitude = config_itr->second.second;
-                float local_time = std::fmod(time, period);
-
-                float common_term = 2 * M_PI * local_time / period;
-                float p_des = (1 - cosf(common_term)) / 2 * amplitude;
-
-                TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
-                sendBuffer.push(frame);
-            }
-
-            if (!maxonMotors.empty())
-            {
-                for (auto &entry : maxonMotors)
-                {
-                    const std::string &motor_name = entry.first;
-                    std::shared_ptr<MaxonMotor> &motor = entry.second;
-
-                    auto config_itr = motor_configurations.find(motor_name);
-                    if (config_itr == motor_configurations.end())
-                    {
-                        std::cerr << "Error: Configuration for motor " << motor_name << " not found.\n";
-                        continue;
-                    }
-
-                    float period = config_itr->second.first;
-                    float amplitude = config_itr->second.second;
-                    float local_time = std::fmod(time, period);
-
-                    float common_term = 2 * M_PI * local_time / period;
-                    int p_des = (1 - cosf(common_term)) / 2 * amplitude;
-
-                    MParser.parseSendCommand(*motor, &frame, p_des);
-                    sendBuffer.push(frame);
-                }
-                MParser.makeSync(&frame);
-                sendBuffer.push(frame);
-            }
-        }
+        kp = 50.0; // 예시 값, 실제 필요한 값으로 조정
+        kd = 1.0;  // 예시 값, 실제 필요한 값으로 조정
+        peakAngle = 90;
+        pathType = 1;
     }
+    // 추가적인 모터 이름과 매개변수를 이곳에 추가할 수 있습니다.
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
