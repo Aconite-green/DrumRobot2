@@ -27,12 +27,17 @@
 #include <cmath>
 #include <chrono>
 #include <set>
+#include <QtCharts/QChart>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QChartView>
+#include <QtWidgets/QMainWindow>
 
 #define Pause 1
 #define Terminate 2
 #define Resume 0
 
 using namespace std;
+using namespace QtCharts;
 
 class Task
 {
@@ -61,16 +66,11 @@ private:
     void DeactivateControlTask();
     vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors);
 
-    // Functions for Testing
-    const int Tdegree_180 = M_PI;
-    const int Tdegree_90 = M_PI / 2;
-    const int Mdegree_180 = 2048 * 35;
-    const int Mdegree_90 = 1024 * 35;
-    int temp = 0;
-    int val = 0;
+    // Functions for Testing   
     void Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType);
     void TuningLoopTask();
     void InitializeTuningParameters(const std::string selectedMotor, float &kp, float &kd, float &peakAngle, int &pathType);
+    void displayChart(const std::string &csvFileName);
 
     // Functions for DrumRobot PathGenerating
     vector<double> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0};

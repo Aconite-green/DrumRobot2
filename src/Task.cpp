@@ -429,12 +429,12 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
                 csvFile << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId << ',' << std::dec << p_des;
 
-                clock_t external = clock();
+                chrono::system_clock::time_point external = std::chrono::system_clock::now();
                 while (1)
                 {
-                    clock_t internal = clock();
-                    double elapsed_time = ((double)(internal - external)) / CLOCKS_PER_SEC * 1000;
-                    if (elapsed_time >= 5)
+                    chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+                    chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
+                    if (elapsed_time.count() >= 5000)
                     {
 
                         ssize_t bytesWritten = write(canUtils.sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
@@ -442,10 +442,6 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                         {
                             std::cerr << "Failed to write to socket for interface: " << motor->interFaceName << std::endl;
                             std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
-                        }
-                        else
-                        {
-                            temp++;
                         }
 
                         ssize_t bytesRead = read(canUtils.sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
@@ -520,7 +516,7 @@ void Task::TuningLoopTask()
         std::cout << "Peak Angle: " << peakAngle << " | Path Type: " << pathTypeDescription << "\n";
         std::cout << "\nCommands:\n";
         std::cout << "[S]elect Motor | [KP] | [KD] | [Peak] | [Type]\n";
-        std::cout << "[P]eriod | [C]ycles | [R]un | [E]xit\n";
+        std::cout << "[P]eriod | [C]ycles | [R]un | [Analyze] | [E]xit\n";
         std::cout << "=============================================\n";
         std::cout << "Enter Command: ";
         std::cin >> userInput;
@@ -582,6 +578,12 @@ void Task::TuningLoopTask()
                 pathType = 1; // 기본값으로 재설정
             }
         }
+        else if (userInput == "analyze")
+        {
+            std::cout << "Enter CSV file name to analyze: ";
+            std::cin >> fileName;
+            displayChart(fileName);
+        }
     }
 }
 
@@ -604,6 +606,33 @@ void Task::InitializeTuningParameters(const std::string selectedMotor, float &kp
         pathType = 1;
     }
     // 추가적인 모터 이름과 매개변수를 이곳에 추가할 수 있습니다.
+}
+
+void Task::displayChart(const std::string &csvFileName)
+{
+    QLineSeries *series = new QLineSeries();
+    series->append(0, 6);
+    series->append(2, 4);
+    series->append(3, 8);
+    series->append(7, 4);
+    series->append(10, 5);
+
+    // 차트 생성
+    QChart *chart = new QChart();
+    chart->legend()->hide();
+    chart->addSeries(series);
+    chart->createDefaultAxes();
+    chart->setTitle("Simple Line Chart Example");
+
+    // 차트를 표시할 차트 뷰 생성
+    QChartView *chartView = new QChartView(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+
+    // 메인 윈도우 생성 및 설정
+    QMainWindow *window = new QMainWindow();
+    window->setCentralWidget(chartView);
+    window->resize(400, 300);
+    window->show();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
