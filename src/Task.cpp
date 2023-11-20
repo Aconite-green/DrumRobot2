@@ -426,7 +426,8 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                 std::shared_ptr<TMotor> &motor = entry.second;
 
                 float local_time = std::fmod(time, sine_t);
-                float p_des = -(1 - cosf(2 * M_PI * local_time / sine_t)) * M_PI / 6;
+                //float p_des = -(1 - cosf(2 * M_PI * local_time / sine_t)) * M_PI / 4;
+                float p_des = sinf(2 * M_PI * local_time / sine_t) * M_PI / 2;
 
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
                 csvFile << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId << ',' << std::dec << p_des;
@@ -482,7 +483,7 @@ void Task::TuningLoopTask()
     float kp = 50.0;
     float kd = 1.0;
     float sine_t = 4.0;
-    int cycles = 4;
+    int cycles = 1;
 
     if (!tmotors.empty())
     {
@@ -529,7 +530,7 @@ void Task::TuningLoopTask()
                 std::cin >> selectedMotor;
 
                 // tmotors 맵에 입력된 모터 이름이 존재하는지 확인
-                if (tmotors.find(selectedMotor) != tmotors.end())
+                if (tmotors.find(selectedMotor) == tmotors.end())
                 {
                     // 해당 모터의 Kp, Kd 기본 설정값 가져오기
                     for (auto &entry : tmotors)
@@ -542,7 +543,6 @@ void Task::TuningLoopTask()
                         kp = motor->Kp;
                         kd = motor->Kd;
                     }
-                    break; // 올바른 모터 이름이 입력되면 루프 탈출
                 }
                 else
                 {
@@ -1829,7 +1829,7 @@ void Task::FixMotorPosition()
         std::string name = motorPair.first;
         std::shared_ptr<TMotor> motor = motorPair.second;
 
-        TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, motor->currentPos, 0, 400, 1, 0);
+        TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, motor->currentPos, 0, 250, 1, 0);
         sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                        [](const std::string &motorName, bool success)
                        {
