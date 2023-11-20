@@ -528,30 +528,15 @@ void Task::TuningLoopTask()
         }
         else if (userInput[0] == 's')
         {
-            std::cout << "Enter the name of the motor to tune: ";
-            std::cin >> selectedMotor;
-            if (tmotors.find(selectedMotor) == tmotors.end())
+            while (true)
             {
                 std::cout << "Enter the name of the motor to tune: ";
                 std::cin >> selectedMotor;
-
-                // tmotors 맵에 입력된 모터 이름이 존재하는지 확인
                 if (tmotors.find(selectedMotor) == tmotors.end())
                 {
-                    // 해당 모터의 Kp, Kd 기본 설정값 가져오기
-                    for (auto &entry : tmotors)
-                    {
-                        if (entry.first != selectedMotor)
-                            continue;
-
-                        std::shared_ptr<TMotor> &motor = entry.second;
-
-                        kp = motor->Kp;
-                        kd = motor->Kd;
-                    }
+                    break;
                 }
-                else
-                {
+                else{
                     std::cout << "Invalid motor name. Please enter a valid motor name.\n";
                 }
             }
