@@ -48,7 +48,7 @@ void Task::operator()()
                   << (isHomeSet ? " (Set)" : "") << "\n"
                                                     "[R] Ready - Prepare the arrangement\n"
                                                     "[P] Perform - Start the performance\n"
-                                                    "[T] Test - Enter test mode\n"
+                                                    "[T] Test - Enter tuning mode\n"
                                                     "[C] Check - Check current motor positions\n"
                                                     "[E] Exit - Terminate the program\n"
                                                     "========================================\n"
@@ -85,21 +85,7 @@ void Task::operator()()
         }
         else if (userInput == 't')
         {
-            Task::FixMotorPosition();
-            while (true)
-            {
-                std::cout << "Enter [T]uning, [E]xit: ";
-                std::cin >> userInput;
-                userInput = std::tolower(userInput);
-                if (userInput == 't')
-                {
-                    TuningLoopTask();
-                }
-                else if (userInput == 'e')
-                {
-                    break;
-                }
-            }
+            TuningLoopTask();
         }
         else if (userInput == 'c') // Check current motor positions
         {
@@ -370,7 +356,7 @@ void Task::DeactivateControlTask()
 // Functions for Testing
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles)
+void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType)
 {
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
     for (const auto &socketPair : canUtils.sockets)
@@ -407,9 +393,12 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
 
     struct can_frame frame;
 
+    float peakRadian = peakAngle * M_PI / 180.0; // 피크 각도를 라디안으로 변환
+    float amplitude = peakRadian;
+
     float sample_time = 0.005;
     int max_samples = static_cast<int>(sine_t / sample_time);
-    float v_des = 0;
+    float v_des = 0, p_des = 0;
     float tff_des = 0;
     float p_act, v_act, tff_act;
     for (int cycle = 0; cycle < cycles; cycle++)
@@ -426,17 +415,27 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                 std::shared_ptr<TMotor> &motor = entry.second;
 
                 float local_time = std::fmod(time, sine_t);
-                float p_des = -(1 - cosf(2 * M_PI * local_time / sine_t)) * M_PI / 4;
+                if (pathType == 1) // 1-cos 경로
+                {
+                    p_des = amplitude * (1 - cosf(2 * M_PI * local_time / sine_t));
+                }
+                else if (pathType == 2) // 1-cos 및 -1+cos 결합 경로
+                {
+                    if (local_time < sine_t / 2)
+                        p_des = amplitude * (1 - cosf(4 * M_PI * local_time / sine_t));
+                    else
+                        p_des = amplitude * (-1 + cosf(4 * M_PI * (local_time - sine_t / 2) / sine_t));
+                }
 
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
                 csvFile << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId << ',' << std::dec << p_des;
 
-                clock_t external = clock();
+                chrono::system_clock::time_point external = std::chrono::system_clock::now();
                 while (1)
                 {
-                    clock_t internal = clock();
-                    double elapsed_time = ((double)(internal - external)) / CLOCKS_PER_SEC * 1000;
-                    if (elapsed_time >= 5)
+                    chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+                    chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
+                    if (elapsed_time.count() >= 5000)
                     {
 
                         ssize_t bytesWritten = write(canUtils.sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
@@ -444,10 +443,6 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
                         {
                             std::cerr << "Failed to write to socket for interface: " << motor->interFaceName << std::endl;
                             std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
-                        }
-                        else
-                        {
-                            temp++;
                         }
 
                         ssize_t bytesRead = read(canUtils.sockets.at(motor->interFaceName), &frame, sizeof(struct can_frame));
@@ -478,11 +473,11 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedM
 
 void Task::TuningLoopTask()
 {
+    FixMotorPosition();
     std::string userInput, selectedMotor, fileName;
-    float kp = 50.0;
-    float kd = 1.0;
+    float kp, kd, peakAngle;
     float sine_t = 4.0;
-    int cycles = 2;
+    int cycles = 2, pathType;
 
     if (!tmotors.empty())
     {
@@ -491,10 +486,21 @@ void Task::TuningLoopTask()
 
     while (true)
     {
+        Task::InitializeTuningParameters(selectedMotor, kp, kd, peakAngle, pathType);
         int result = system("clear");
         if (result != 0)
         {
             std::cerr << "Error during clear screen" << std::endl;
+        }
+
+        std::string pathTypeDescription;
+        if (pathType == 1)
+        {
+            pathTypeDescription = "1: 1 - cos (0 -> peak -> 0)";
+        }
+        else if (pathType == 2)
+        {
+            pathTypeDescription = "2: 1 - cos & cos - 1 (0 -> peak -> 0 -> -peak -> 0)";
         }
 
         std::cout << "================ Tuning Menu ================\n";
@@ -507,9 +513,10 @@ void Task::TuningLoopTask()
         std::cout << "Selected Motor: " << selectedMotor << "\n";
         std::cout << "Kp: " << kp << " | Kd: " << kd << "\n";
         std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << "\n";
+        std::cout << "Peak Angle: " << peakAngle << " | Path Type: " << pathTypeDescription << "\n";
         std::cout << "\nCommands:\n";
-        std::cout << "[S]elect Motor | [KP] | [KD]\n";
-        std::cout << "[P]eriod | [C]ycles | [R]un | [E]xit\n";
+        std::cout << "[S]elect Motor | [KP] | [KD] | [Peak] | [Type]\n";
+        std::cout << "[P]eriod | [C]ycles | [R]un | [Analyze] | [E]xit\n";
         std::cout << "=============================================\n";
         std::cout << "Enter Command: ";
         std::cin >> userInput;
@@ -525,7 +532,28 @@ void Task::TuningLoopTask()
             std::cin >> selectedMotor;
             if (tmotors.find(selectedMotor) == tmotors.end())
             {
-                std::cout << "Invalid motor name. Please enter a valid motor name.\n";
+                std::cout << "Enter the name of the motor to tune: ";
+                std::cin >> selectedMotor;
+
+                // tmotors 맵에 입력된 모터 이름이 존재하는지 확인
+                if (tmotors.find(selectedMotor) == tmotors.end())
+                {
+                    // 해당 모터의 Kp, Kd 기본 설정값 가져오기
+                    for (auto &entry : tmotors)
+                    {
+                        if (entry.first != selectedMotor)
+                            continue;
+
+                        std::shared_ptr<TMotor> &motor = entry.second;
+
+                        kp = motor->Kp;
+                        kd = motor->Kd;
+                    }
+                }
+                else
+                {
+                    std::cout << "Invalid motor name. Please enter a valid motor name.\n";
+                }
             }
         }
         else if (userInput == "kp")
@@ -550,101 +578,156 @@ void Task::TuningLoopTask()
         }
         else if (userInput[0] == 'r')
         {
-            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles);
+            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles, peakAngle, pathType);
+        }
+        else if (userInput == "peak")
+        {
+            std::cout << "Enter Desired Peak Angle: ";
+            std::cin >> peakAngle;
+        }
+        else if (userInput == "type")
+        {
+            std::cout << "Select Path Type:\n";
+            std::cout << "1: 1 - cos (0 -> peak -> 0)\n";
+            std::cout << "2: 1 - cos & cos - 1 (0 -> peak -> 0 -> -peak -> 0)\n";
+            std::cout << "Enter Path Type (1 or 2): ";
+            std::cin >> pathType;
+
+            if (pathType != 1 && pathType != 2)
+            {
+                std::cout << "Invalid path type. Please enter 1 or 2.\n";
+                pathType = 1; // 기본값으로 재설정
+            }
+        }
+        else if (userInput == "analyze")
+        {
+            displayChart();
+            std::cout<<"Press Enter to move on\n";
+            getchar();
         }
     }
 }
 
-void Task::PeriodicMotionTester(queue<can_frame> &sendBuffer)
+void Task::InitializeTuningParameters(const std::string selectedMotor, float &kp, float &kd, float &peakAngle, int &pathType)
 {
-    std::map<std::string, std::pair<float, float>> motor_configurations = {
-        {"1_waist", {8, Tdegree_180}},
-        {"2_R_arm1", {8, Tdegree_180}},
-        {"3_L_arm1", {8, Tdegree_180}},
-        {"4_R_arm2", {8, Tdegree_180}},
-        {"5_R_arm3", {8, Tdegree_180}},
-        {"6_L_arm2", {8, Tdegree_180}},
-        {"7_L_arm3", {8, Tdegree_180}},
-        {"a_maxon", {8, Mdegree_180}},
-        {"b_maxon", {8, Mdegree_180}}};
-
-    struct can_frame frame;
-    if ((tmotors.size() + maxonMotors.size()) != motor_configurations.size())
+    if (selectedMotor == "waist")
     {
-        std::cerr << "Error: The number of motors does not match the number of total_times entries.\n";
+        kp = 200.0;
+        kd = 1.0;
+        peakAngle = 30;
+        pathType = 2;
+    }
+    else if (selectedMotor == "R_arm1" || selectedMotor == "L_arm1" ||
+             selectedMotor == "R_arm2" || selectedMotor == "R_arm3" ||
+             selectedMotor == "L_arm2" || selectedMotor == "L_arm3")
+    {
+        kp = 50.0; // 예시 값, 실제 필요한 값으로 조정
+        kd = 1.0;  // 예시 값, 실제 필요한 값으로 조정
+        peakAngle = 90;
+        pathType = 1;
+    }
+    // 추가적인 모터 이름과 매개변수를 이곳에 추가할 수 있습니다.
+}
+
+void Task::displayChart()
+{
+    QDir directory("TuningData");
+    QFileInfoList files = directory.entryInfoList(QStringList() << "*.csv", QDir::Files);
+
+    if (files.isEmpty())
+    {
+        std::cerr << "No CSV files found in the TuningData directory." << std::endl;
         return;
     }
 
-    float sample_time = 0.005;
-    int cycles = 5;
-    float max_time = std::max_element(motor_configurations.begin(), motor_configurations.end(),
-                                      [](const auto &a, const auto &b)
-                                      {
-                                          return a.second.first < b.second.first;
-                                      })
-                         ->second.first;
+    QString firstCsvFile = files.first().absoluteFilePath();
+    std::cout << "Loading CSV file: " << firstCsvFile.toStdString() << std::endl;
 
-    int max_samples = static_cast<int>(max_time / sample_time);
+    std::ifstream file(firstCsvFile.toStdString());
 
-    for (int cycle = 0; cycle < cycles; cycle++)
-    {
-        for (int i = 0; i < max_samples; i++)
-        {
-            float time = i * sample_time;
-
-            for (auto &entry : tmotors)
-            {
-                const std::string &motor_name = entry.first;
-                std::shared_ptr<TMotor> &motor = entry.second;
-
-                auto config_itr = motor_configurations.find(motor_name);
-                if (config_itr == motor_configurations.end())
-                {
-                    std::cerr << "Error: Configuration for motor " << motor_name << " not found.\n";
-                    continue;
-                }
-
-                float period = config_itr->second.first;
-                float amplitude = config_itr->second.second;
-                float local_time = std::fmod(time, period);
-
-                float common_term = 2 * M_PI * local_time / period;
-                float p_des = (1 - cosf(common_term)) / 2 * amplitude;
-
-                TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
-                sendBuffer.push(frame);
-            }
-
-            if (!maxonMotors.empty())
-            {
-                for (auto &entry : maxonMotors)
-                {
-                    const std::string &motor_name = entry.first;
-                    std::shared_ptr<MaxonMotor> &motor = entry.second;
-
-                    auto config_itr = motor_configurations.find(motor_name);
-                    if (config_itr == motor_configurations.end())
-                    {
-                        std::cerr << "Error: Configuration for motor " << motor_name << " not found.\n";
-                        continue;
-                    }
-
-                    float period = config_itr->second.first;
-                    float amplitude = config_itr->second.second;
-                    float local_time = std::fmod(time, period);
-
-                    float common_term = 2 * M_PI * local_time / period;
-                    int p_des = (1 - cosf(common_term)) / 2 * amplitude;
-
-                    MParser.parseSendCommand(*motor, &frame, p_des);
-                    sendBuffer.push(frame);
-                }
-                MParser.makeSync(&frame);
-                sendBuffer.push(frame);
-            }
-        }
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << firstCsvFile.toStdString() << std::endl;
+        return;
     }
+
+    QLineSeries *seriesPDes = new QLineSeries();
+    QLineSeries *seriesPAct = new QLineSeries();
+    QLineSeries *seriesTffDes = new QLineSeries();
+    QLineSeries *seriesTffAct = new QLineSeries();
+
+    std::string line;
+    getline(file, line); // 헤더 줄 건너뛰기
+
+    int time = 0;
+    int lineCount = 0;
+    while (getline(file, line))
+    {
+        std::stringstream ss(line);
+        std::string value;
+        std::vector<float> values;
+
+        while (getline(ss, value, ','))
+        {
+            values.push_back(std::stof(value));
+        }
+
+        if (values.size() != 5) {
+            std::cerr << "Invalid line format: " << line << std::endl;
+            continue;
+        }
+
+        seriesPDes->append(time, values[1]);
+        seriesPAct->append(time, values[2]);
+        seriesTffDes->append(time, values[3]);
+        seriesTffAct->append(time, values[4]);
+        time += 5; // 행 하나당 5ms 증가
+        lineCount++;
+    }
+
+    std::cout << "Loaded " << lineCount << " data points from the file." << std::endl;
+
+    // P_des와 P_act 차트
+    QChart *chartP = new QChart();
+    chartP->legend()->hide();
+    chartP->addSeries(seriesPDes);
+    chartP->addSeries(seriesPAct);
+    chartP->createDefaultAxes();
+    std::string titleP = "Position Chart: " + firstCsvFile.toStdString();
+    chartP->setTitle(QString::fromStdString(titleP));
+
+    // Tff_des와 Tff_act 차트
+    QChart *chartTff = new QChart();
+    chartTff->legend()->hide();
+    chartTff->addSeries(seriesTffDes);
+    chartTff->addSeries(seriesTffAct);
+    chartTff->createDefaultAxes();
+    std::string titleTff = "Torque Chart: " + firstCsvFile.toStdString();
+    chartTff->setTitle(QString::fromStdString(titleTff));
+
+    std::cout << "Charts created." << std::endl;
+
+    // 차트 뷰 생성 및 설정
+    QChartView *chartViewP = new QChartView(chartP);
+    chartViewP->setRenderHint(QPainter::Antialiasing);
+
+    QChartView *chartViewTff = new QChartView(chartTff);
+    chartViewTff->setRenderHint(QPainter::Antialiasing);
+
+    std::cout << "Chart views created." << std::endl;
+
+    // 메인 윈도우 설정
+    QMainWindow *window = new QMainWindow();
+    QSplitter *splitter = new QSplitter();
+    splitter->addWidget(chartViewP);
+    splitter->addWidget(chartViewTff);
+
+    window->setCentralWidget(splitter);
+    window->resize(1200, 300); // 기존의 3배 크기
+    window->show();
+
+    std::cout << "Window displayed." << std::endl;
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for DrumRobot PathGenerating
@@ -1808,7 +1891,7 @@ void Task::FixMotorPosition()
         std::string name = motorPair.first;
         std::shared_ptr<TMotor> motor = motorPair.second;
 
-        TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, motor->currentPos, 0, 50, 1, 0);
+        TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, motor->currentPos, 0, 250, 1, 0);
         sendAndReceive(canUtils.sockets.at(motor->interFaceName), name, frame,
                        [](const std::string &motorName, bool success)
                        {

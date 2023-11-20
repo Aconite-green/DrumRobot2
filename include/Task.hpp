@@ -5,7 +5,6 @@
 #include "../include/Motor.hpp"
 #include "../include/TaskUtility.hpp"
 #include "../include/Global.hpp"
-#include "../include/TaskUtility.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -27,19 +26,28 @@
 #include <cmath>
 #include <chrono>
 #include <set>
+#include <QtCharts/QChart>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QChartView>
+#include <QtWidgets/QMainWindow>
+#include <QDir>
+#include <QFileInfoList>
+#include <QSplitter>
 
 #define Pause 1
 #define Terminate 2
 #define Resume 0
 
 using namespace std;
+using namespace QtCharts;
+
 
 class Task
 {
 
 public:
     // 생성자 매개변수 이름 변경 및 명확성 추가
-   Task(map<string, shared_ptr<TMotor>, CustomCompare> &input_tmotors,
+    Task(map<string, shared_ptr<TMotor>, CustomCompare> &input_tmotors,
          map<string, shared_ptr<MaxonMotor>> &input_maxonMotors);
 
     void operator()();
@@ -61,16 +69,11 @@ private:
     void DeactivateControlTask();
     vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors);
 
-    // Functions for Testing
-    const int Tdegree_180 = M_PI;
-    const int Tdegree_90 = M_PI / 2;
-    const int Mdegree_180 = 2048 * 35;
-    const int Mdegree_90 = 1024 * 35;
-    int temp = 0;
-    int val = 0;
-    void Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles);
+    // Functions for Testing   
+    void Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType);
     void TuningLoopTask();
-    void PeriodicMotionTester(queue<can_frame> &sendBuffer);
+    void InitializeTuningParameters(const std::string selectedMotor, float &kp, float &kd, float &peakAngle, int &pathType);
+    void displayChart();
 
     // Functions for DrumRobot PathGenerating
     vector<double> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0};
@@ -113,8 +116,7 @@ private:
     vector<vector<double>> q;
 
     map<string, int> motor_mapping = {
-        {"L_arm1", 2}, {"L_arm2", 5}, {"L_arm3", 6}, {"R_arm1", 1}, {"R_arm2", 3}, {"R_arm3", 4}, {"waist", 0}
-    };
+        {"L_arm1", 2}, {"L_arm2", 5}, {"L_arm3", 6}, {"R_arm1", 1}, {"R_arm2", 3}, {"R_arm3", 4}, {"waist", 0}};
 
     string trimWhitespace(const std::string &str);
     vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n);
