@@ -1,6 +1,5 @@
 #include "../include/TaskUtility.hpp"
 
-
 void fillCanFrameFromInfo(struct can_frame *frame, const CanFrameInfo &info)
 {
     frame->can_id = info.can_id;
@@ -81,8 +80,10 @@ void writeAndReadForSync(
     customOutput(name, success);
 }
 
-void handleError(ssize_t bytesWritten, const std::string& interface_name) {
-    if (bytesWritten == -1) {
+void handleError(ssize_t bytesWritten, const std::string &interface_name)
+{
+    if (bytesWritten == -1)
+    {
         std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
         std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
     }
@@ -115,4 +116,18 @@ int kbhit()
     return 0;
 }
 
+void drawChart(QtCharts::QLineSeries *series) {
+    
+    QtCharts::QChart *chart = new QtCharts::QChart();
+    chart->addSeries(series);
+    chart->createDefaultAxes();
+    
+    QtCharts::QChartView *chartView = new QtCharts::QChartView(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    
+    QMainWindow *window = new QMainWindow;
+    window->setCentralWidget(chartView);
+    window->resize(800, 600);
+    window->show();
+}
 
