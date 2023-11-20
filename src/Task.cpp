@@ -1703,6 +1703,7 @@ void Task::SetHome()
                                            std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
                                        }
                                    });
+                    CheckCurrentPosition();
 
                     cout << "\nPress Enter to move to Home Position\n";
                     getchar();
