@@ -7,6 +7,7 @@ Task::Task(map<string, shared_ptr<TMotor>, CustomCompare> &input_tmotors,
       canUtils(extractIfnamesFromMotors(input_tmotors)) // 멤버 초기화
 {
     state.store(0);
+    chartHandler = nullptr; 
 }
 
 vector<string> Task::extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors)
@@ -586,9 +587,9 @@ void Task::TuningLoopTask()
         }
         else if (userInput == "analyze")
         {
-            displayChart();
-            std::cout<<"Press Enter to move on\n";
-            getchar();
+           if(chartHandler) {
+            emit chartHandler->displayChartSignal();
+        }
         }
     }
 }
@@ -713,7 +714,9 @@ void Task::displayChart()
     std::cout << "Window displayed." << std::endl;
 }
 
-
+void Task::setChartHandler(ChartHandler *handler){
+    chartHandler = handler;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for DrumRobot PathGenerating
 //////////////////////////////////////////////////////////////////////////////////////////////////
