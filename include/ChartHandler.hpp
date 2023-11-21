@@ -7,8 +7,16 @@
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QChart>
 #include <QApplication>
+#include <QDir>
+#include <QFileInfoList>
+#include <QSplitter>
+#include <QtWidgets/QMainWindow>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 using namespace QtCharts;
+using namespace std;
 
 class ChartHandler : public QObject
 {

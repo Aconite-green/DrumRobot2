@@ -29,10 +29,7 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QChartView>
-#include <QtWidgets/QMainWindow>
-#include <QDir>
-#include <QFileInfoList>
-#include <QSplitter>
+
 #include "ChartHandler.hpp"
 
 #define Pause 1
