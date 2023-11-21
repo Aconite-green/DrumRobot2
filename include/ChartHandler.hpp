@@ -2,18 +2,19 @@
 #ifndef CHARTHANDLER_HPP
 #define CHARTHANDLER_HPP
 
-#include <QObject>
-#include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QChart>
-#include <QApplication>
 #include <QDir>
 #include <QFileInfoList>
-#include <QSplitter>
+#include <QStringList>
+#include <QtCharts/QChart>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QChartView>
 #include <QtWidgets/QMainWindow>
-#include <iostream>
+#include <QtCharts/QValueAxis>
+#include <QSplitter> 
 #include <fstream>
 #include <sstream>
+#include <iostream>
+#include <regex>
 
 using namespace QtCharts;
 using namespace std;
@@ -32,3 +33,4 @@ public slots:
     void displayChartSlot();
 };
 #endif // CHARTHANDLER_HPP
+
