@@ -33,6 +33,7 @@
 #include <QDir>
 #include <QFileInfoList>
 #include <QSplitter>
+#include "ChartHandler.hpp"
 
 #define Pause 1
 #define Terminate 2
@@ -40,7 +41,6 @@
 
 using namespace std;
 using namespace QtCharts;
-
 
 class Task
 {
@@ -51,6 +51,8 @@ public:
          map<string, shared_ptr<MaxonMotor>> &input_maxonMotors);
 
     void operator()();
+
+    void setChartHandler(ChartHandler *handler);
 
 private:
     map<string, shared_ptr<TMotor>, CustomCompare> &tmotors;
@@ -69,11 +71,12 @@ private:
     void DeactivateControlTask();
     vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors);
 
-    // Functions for Testing   
+    // Functions for Testing
     void Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType);
     void TuningLoopTask();
     void InitializeTuningParameters(const std::string selectedMotor, float &kp, float &kd, float &peakAngle, int &pathType);
     void displayChart();
+    ChartHandler *chartHandler;
 
     // Functions for DrumRobot PathGenerating
     vector<double> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0};
