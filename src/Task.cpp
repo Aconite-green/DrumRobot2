@@ -357,7 +357,7 @@ void Task::DeactivateControlTask()
 // Functions for Testing
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Task::Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType)
+void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMotor, int cycles, float peakAngle, int pathType)
 {
     // sockets 맵의 모든 항목에 대해 set_socket_timeout 설정
     for (const auto &socketPair : canUtils.sockets)
@@ -485,9 +485,9 @@ void Task::TuningLoopTask()
         selectedMotor = tmotors.begin()->first;
     }
 
+    InitializeTuningParameters(selectedMotor, kp, kd, peakAngle, pathType);
     while (true)
     {
-        Task::InitializeTuningParameters(selectedMotor, kp, kd, peakAngle, pathType);
         int result = system("clear");
         if (result != 0)
         {
@@ -533,8 +533,9 @@ void Task::TuningLoopTask()
             {
                 std::cout << "Enter the name of the motor to tune: ";
                 std::cin >> selectedMotor;
-                if (tmotors.find(selectedMotor) == tmotors.end())
+                if (tmotors.find(selectedMotor) != tmotors.end())
                 {
+                    InitializeTuningParameters(selectedMotor, kp, kd, peakAngle, pathType);
                     break;
                 }
                 else
@@ -552,20 +553,6 @@ void Task::TuningLoopTask()
         {
             std::cout << "Enter Desired Kd: ";
             std::cin >> kd;
-        }
-        else if (userInput[0] == 'p')
-        {
-            std::cout << "Enter Desired Sine Period: ";
-            std::cin >> sine_t;
-        }
-        else if (userInput[0] == 'c')
-        {
-            std::cout << "Enter Desired Cycles: ";
-            std::cin >> cycles;
-        }
-        else if (userInput[0] == 'r')
-        {
-            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles, peakAngle, pathType);
         }
         else if (userInput == "peak")
         {
@@ -586,11 +573,24 @@ void Task::TuningLoopTask()
                 pathType = 1; // 기본값으로 재설정
             }
         }
+        else if (userInput[0] == 'p')
+        {
+            std::cout << "Enter Desired Sine Period: ";
+            std::cin >> sine_t;
+        }
+        else if (userInput[0] == 'c')
+        {
+            std::cout << "Enter Desired Cycles: ";
+            std::cin >> cycles;
+        }
+        else if (userInput[0] == 'r')
+        {
+            Task::Tuning(kp, kd, sine_t, selectedMotor, cycles, peakAngle, pathType);
+        }
         else if (userInput == "analyze")
         {
-            if (chartHandler)
-            {
-                emit chartHandler->displayChartSignal();
+           if(chartHandler) {
+            emit chartHandler->displayChartSignal();
             }
         }
     }
