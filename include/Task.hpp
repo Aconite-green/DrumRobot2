@@ -72,7 +72,6 @@ private:
     void Tuning(float kp, float kd, float sine_t, const std::string &selectedMotor, int cycles, float peakAngle, int pathType);
     void TuningLoopTask();
     void InitializeTuningParameters(const std::string selectedMotor, float &kp, float &kd, float &peakAngle, int &pathType);
-    void displayChart();
     ChartHandler *chartHandler;
 
     // Functions for DrumRobot PathGenerating

@@ -11,6 +11,8 @@
 #include <QtWidgets/QMainWindow>
 #include <QtCharts/QValueAxis>
 #include <QSplitter> 
+#include <QDateTime>
+
 #include <fstream>
 #include <sstream>
 #include <iostream>
