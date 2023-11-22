@@ -418,14 +418,14 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
                 float local_time = std::fmod(time, sine_t);
                 if (pathType == 1) // 1-cos 경로
                 {
-                    p_des = amplitude * (1 - cosf(2 * M_PI * local_time / sine_t));
+                    p_des = amplitude * (1 - cosf(2 * M_PI * local_time / sine_t))/2;
                 }
                 else if (pathType == 2) // 1-cos 및 -1+cos 결합 경로
                 {
                     if (local_time < sine_t / 2)
-                        p_des = amplitude * (1 - cosf(4 * M_PI * local_time / sine_t));
+                        p_des = amplitude * (1 - cosf(4 * M_PI * local_time / sine_t))/2;
                     else
-                        p_des = amplitude * (-1 + cosf(4 * M_PI * (local_time - sine_t / 2) / sine_t));
+                        p_des = amplitude * (-1 + cosf(4 * M_PI * (local_time - sine_t / 2) / sine_t))/2;
                 }
 
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
@@ -488,12 +488,12 @@ void Task::TuningLoopTask()
     InitializeTuningParameters(selectedMotor, kp, kd, peakAngle, pathType);
     while (true)
     {
-        int result = system("clear");
+        /*int result = system("clear");
         if (result != 0)
         {
             std::cerr << "Error during clear screen" << std::endl;
         }
-
+        */
         std::string pathTypeDescription;
         if (pathType == 1)
         {
