@@ -21,15 +21,16 @@ void ChartHandler::displayChartSlot()
         return;
     }
 
-    QMainWindow *window = new QMainWindow();
-    QSplitter *splitter = new QSplitter();
-
-    for (int i = 0; i < std::min(files.size(), 3); ++i)
+    for (int i = 0; i < std::min(files.size(), 2); ++i)
     {
+
+        QMainWindow *window = new QMainWindow();
+        QSplitter *splitter = new QSplitter();
+
         QString filePath = files[i].absoluteFilePath();
         std::string fileName = files[i].fileName().toStdString();
         QString qFileName = QString::fromStdString(fileName);
-        std::cout << "Loading CSV file: " << fileName << std::endl;
+        
 
         // Extract Kp and Kd values from the filename
         std::regex kpKdRegex("kp_([0-9.]+)_kd_([0-9.]+)");
@@ -92,7 +93,7 @@ void ChartHandler::displayChartSlot()
             lineCount++;
         }
 
-        std::cout << "Loaded " << lineCount << " data points from the file." << std::endl;
+        
 
         // Create new axes and set their properties
         QValueAxis *axisXPosition = new QValueAxis();
@@ -142,10 +143,10 @@ void ChartHandler::displayChartSlot()
         // Add chart views to the splitter
         splitter->addWidget(chartViewP);
         splitter->addWidget(chartViewTff);
-    }
 
-    // Setup the main window
-    window->setCentralWidget(splitter);
-    window->resize(1800, 700); // Adjust the window size as needed
-    window->show();
+        // Setup the main window
+        window->setCentralWidget(splitter);
+        window->resize(1280, 720); // Adjust the window size as needed
+        window->show();
+    }
 }

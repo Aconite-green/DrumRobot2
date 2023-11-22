@@ -100,6 +100,7 @@ void Task::operator()()
         }
     }
     DeactivateControlTask();
+    emit chartHandler->requestQuit();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -513,7 +514,7 @@ void Task::TuningLoopTask()
         std::cout << "---------------------------------------------\n";
         std::cout << "Selected Motor: " << selectedMotor << "\n";
         std::cout << "Kp: " << kp << " | Kd: " << kd << "\n";
-        std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << " | Hz: "<< 1/sine_t << "\n";
+        std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << " | Hz: " << 1 / sine_t << "\n";
         std::cout << "Peak Angle: " << peakAngle << " | Path Type: " << pathTypeDescription << "\n";
         std::cout << "\nCommands:\n";
         std::cout << "[S]elect Motor | [KP] | [KD] | [Peak] | [Type]\n";
@@ -589,8 +590,9 @@ void Task::TuningLoopTask()
         }
         else if (userInput[0] == 'a')
         {
-           if(chartHandler) {
-            emit chartHandler->displayChartSignal();
+            if (chartHandler)
+            {
+                emit chartHandler->displayChartSignal();
             }
         }
     }
@@ -1649,7 +1651,7 @@ void Task::SetHome()
                 if ((DIValue >> i) & 1)
                 {
                     cnt++;
-                    
+
                     if (cnt >= 17)
                     {
                         // 모터를 멈추는 신호를 보냄
