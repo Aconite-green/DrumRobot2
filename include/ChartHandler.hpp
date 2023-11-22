@@ -30,6 +30,7 @@ public:
 
 signals:
     void displayChartSignal();
+    void requestQuit();
 
 public slots:
     void displayChartSlot();
