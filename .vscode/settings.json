@@ -57,7 +57,8 @@
         "codecvt": "cpp",
         "set": "cpp",
         "list": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "qmainwindow": "cpp"
     },
     "makefile.launchConfigurations": [
         {
