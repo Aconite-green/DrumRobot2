@@ -476,9 +476,8 @@ void Task::TuningLoopTask()
 {
     FixMotorPosition();
     std::string userInput, selectedMotor, fileName;
-    float kp, kd, peakAngle, Hz;
+    float kp, kd, peakAngle;
     float sine_t = 4.0;
-    Hz = 1/sine_t;
     int cycles = 2, pathType;
 
     if (!tmotors.empty())
@@ -514,7 +513,7 @@ void Task::TuningLoopTask()
         std::cout << "---------------------------------------------\n";
         std::cout << "Selected Motor: " << selectedMotor << "\n";
         std::cout << "Kp: " << kp << " | Kd: " << kd << "\n";
-        std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << " | Hz: "<< Hz << "\n";
+        std::cout << "Sine Period: " << sine_t << " | Cycles: " << cycles << " | Hz: "<< 1/sine_t << "\n";
         std::cout << "Peak Angle: " << peakAngle << " | Path Type: " << pathTypeDescription << "\n";
         std::cout << "\nCommands:\n";
         std::cout << "[S]elect Motor | [KP] | [KD] | [Peak] | [Type]\n";
