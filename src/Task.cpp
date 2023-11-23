@@ -441,11 +441,23 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
             for (auto &entry : tmotors)
             {
-                csvFileIn << std::dec << p_des << ",";
                 if (entry.first != selectedMotor)
                     continue;
 
                 std::shared_ptr<TMotor> &motor = entry.second;
+
+                if((int)motor->nodeId == 7){
+                    csvFileIn << std::dec << p_des << "0,0,0,0,0,0\n";
+                }
+                else{
+                    for(int i=0; i<(int)motor->nodeId; i++){
+                        csvFileIn << "0,";
+                    }
+                    csvFileIn << std::dec << p_des << ",";
+                    for(int i=0; i<(6-(int)motor->nodeId); i++){
+                        csvFileIn << "0,";
+                    }
+                }
 
                 float local_time = std::fmod(time, sine_t);
                 if (pathType == 1) // 1-cos 경로
