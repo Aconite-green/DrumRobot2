@@ -447,7 +447,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
                 std::shared_ptr<TMotor> &motor = entry.second;
 
                 if((int)motor->nodeId == 7){
-                    csvFileIn << std::dec << p_des << "0,0,0,0,0,0\n";
+                    csvFileIn << std::dec << p_des << "0,0,0,0,0,0";
                 }
                 else{
                     for(int i=0; i<(int)motor->nodeId; i++){
