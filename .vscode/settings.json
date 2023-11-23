@@ -58,7 +58,10 @@
         "set": "cpp",
         "list": "cpp",
         "variant": "cpp",
-        "qmainwindow": "cpp"
+        "qmainwindow": "cpp",
+        "bitset": "cpp",
+        "regex": "cpp",
+        "shared_mutex": "cpp"
     },
     "makefile.launchConfigurations": [
         {

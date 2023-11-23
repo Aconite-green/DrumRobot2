@@ -371,6 +371,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
         }
     }
 
+    /*
     std::stringstream ss;
     std::string fileName;
 
@@ -381,7 +382,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     std::string folderName = "TuningData";
     std::string baseName = ss.str(); // ss.str()로 stringstream의 내용을 std::string으로 가져옵니다.
     fileName = folderName + "/" + baseName;
-
+    
     // CSV 파일을 쓰기 모드로 열기
 
     std::ofstream csvFile(fileName);
@@ -390,8 +391,37 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
         std::cerr << "Failed to open file: " << fileName << std::endl;
         return; // 또는 다른 오류 처리
     }
+    */
 
-    csvFile << "CAN_ID,p_des,p_act,tff_des,tff_act\n"; // CSV 헤더
+    // CSV 파일명 설정
+    std::string FileName1 = "../../READ/DrumData_in.txt";
+
+    // CSV 파일 열기
+    std::ofstream csvFileIn(FileName1);
+
+    if (!csvFileIn.is_open())
+    {
+        std::cerr << "Error opening CSV file." << std::endl;
+    }
+
+    // 헤더 추가
+    csvFileIn << "kp_" << kp << ",kd_" << kd << ",period_" << sine_t << "\n";
+
+
+    // CSV 파일명 설정
+    std::string FileName2 = "../../READ/DrumData_out.txt";
+
+    // CSV 파일 열기
+    std::ofstream csvFileOut(FileName2);
+
+    if (!csvFileOut.is_open())
+    {
+        std::cerr << "Error opening CSV file." << std::endl;
+    }
+
+    // 헤더 추가
+    csvFileOut << "CAN_ID,p_act,tff_des,tff_act\n"; // CSV 헤더
+
 
     struct can_frame frame;
 
@@ -411,6 +441,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
             for (auto &entry : tmotors)
             {
+                csvFileIn << std::dec << p_des << ",";
                 if (entry.first != selectedMotor)
                     continue;
 
@@ -430,7 +461,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
                 }
 
                 TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, kp, kd, tff_des);
-                csvFile << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId << ',' << std::dec << p_des;
+                csvFileOut << "0x" << std::hex << std::setw(4) << std::setfill('0') << motor->nodeId;
 
                 chrono::system_clock::time_point external = std::chrono::system_clock::now();
                 while (1)
@@ -462,15 +493,17 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
                             v_act = std::get<1>(result);
                             tff_act = std::get<3>(result);
                             tff_des = kp * (p_des - p_act) + kd * (v_des - v_act);
-                            csvFile << ',' << std::dec << p_act << ',' << tff_des << ',' << tff_act << '\n';
+                            csvFileOut << ',' << std::dec << p_act << ',' << tff_des << ',' << tff_act << '\n';
                             break;
                         }
                     }
                 }
             }
+            csvFileIn << "\n";
         }
     }
-    csvFile.close();
+    csvFileIn.close();
+    csvFileOut.close();
 }
 
 void Task::TuningLoopTask()
@@ -1340,7 +1373,7 @@ void Task::parse_and_save_to_csv(const std::string &csv_file_name)
     ofs.seekp(0, std::ios::end);
     if (ofs.tellp() == 0)
     {
-        ofs << "ID,Position(rad)\n";
+        ofs << "CAN_ID,p_act,tff_des,tff_act\n";
     };
 
     while (!recieveBuffer.empty())
