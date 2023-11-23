@@ -35,9 +35,9 @@ sudo apt-get install libqt5charts5 libqt5charts5-dev
     tmotors["L_arm1"] = make_shared<TMotor>(0x002, "AK70_10", "can0");
     // tmotors["R_arm2"] = make_shared<TMotor>(0x003, "AK70_10", "can0");
 
-    // tmotors["R_arm3"] = make_shared<TMotor>(0x004, "AK70_10", "can0");
-    tmotors["L_arm2"] = make_shared<TMotor>(0x005, "AK70_10", "can0");
-    tmotors["L_arm3"] = make_shared<TMotor>(0x006, "AK70_10", "can0");
+    //tmotors["R_arm3"] = make_shared<TMotor>(0x004, "AK70_10", "can0");
+    //tmotors["L_arm2"] = make_shared<TMotor>(0x005, "AK70_10", "can0");
+    //tmotors["L_arm3"] = make_shared<TMotor>(0x006, "AK70_10", "can0");
 
     map<string, shared_ptr<MaxonMotor>> maxonMotors;
     /*maxonMotors["a_maxon"] = make_shared<MaxonMotor>(0x001,
