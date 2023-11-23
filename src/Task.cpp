@@ -382,7 +382,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     std::string folderName = "TuningData";
     std::string baseName = ss.str(); // ss.str()로 stringstream의 내용을 std::string으로 가져옵니다.
     fileName = folderName + "/" + baseName;
-    
+
     // CSV 파일을 쓰기 모드로 열기
 
     std::ofstream csvFile(fileName);
@@ -407,7 +407,6 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     // 헤더 추가
     csvFileIn << "kp_" << kp << ",kd_" << kd << ",period_" << sine_t << "\n";
 
-
     // CSV 파일명 설정
     std::string FileName2 = "../../READ/DrumData_out.txt";
 
@@ -421,7 +420,6 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
     // 헤더 추가
     csvFileOut << "CAN_ID,p_act,tff_des,tff_act\n"; // CSV 헤더
-
 
     struct can_frame frame;
 
@@ -446,15 +444,19 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
                 std::shared_ptr<TMotor> &motor = entry.second;
 
-                if((int)motor->nodeId == 7){
+                if ((int)motor->nodeId == 7)
+                {
                     csvFileIn << std::dec << p_des << "0,0,0,0,0,0\n";
                 }
-                else{
-                    for(int i=0; i<(int)motor->nodeId; i++){
+                else
+                {
+                    for (int i = 0; i < (int)motor->nodeId; i++)
+                    {
                         csvFileIn << "0,";
                     }
                     csvFileIn << std::dec << p_des << ",";
-                    for(int i=0; i<(6-(int)motor->nodeId); i++){
+                    for (int i = 0; i < (6 - (int)motor->nodeId); i++)
+                    {
                         csvFileIn << "0,";
                     }
                 }
@@ -1636,7 +1638,17 @@ void Task::SetHome()
 {
     struct can_frame frameToProcess;
     Task::ActivateSensor();
-    getchar();
+
+    // 각 모터의 방향 설정
+    std::map<std::string, double> directionSettings = {
+        {"waist", 1.0},
+        {"R_arm1", 1.0},
+        {"L_arm1", 1.0},
+        {"R_arm2", 1.0},
+        {"R_arm3", 1.0},
+        {"L_arm2", 1.0},
+        {"L_arm3", 1.0}};
+
     for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
@@ -1662,8 +1674,8 @@ void Task::SetHome()
             continue; // 다음 모터로 넘어가기
         }
 
-        // 해당 모터를 0.2rad/sec로 이동시킴
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2, 0, 4.5, 0);
+        double initialDirection = 0.2 * directionSettings[motor_pair.first];
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2 * initialDirection, 0, 4.5, 0);
         // 모터에 연결된 canport를 사용해 신호를 보냄
         if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
         {
@@ -1728,7 +1740,7 @@ void Task::SetHome()
 
                     cout << "\nPress Enter to move to Home Position\n";
                     getchar();
-                    const double targetRadian = -M_PI / 2;
+                    const double targetRadian = -M_PI / 2 * directionSettings[motor_pair.first];
                     int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
 
                     auto startTime = std::chrono::system_clock::now();
