@@ -392,8 +392,13 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     }
     */
 
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(2); // 소수점 둘째 자리까지만
+    ss << "kp_" << kp << "_kd_" << kd << "_Hz_" << 1 / sine_t;
+    std::string parameter = ss.str();
+
     // CSV 파일명 설정
-    std::string FileName1 = "../../READ/DrumData_in.txt";
+    std::string FileName1 = "../../READ/" + parameter + "_in.txt";
 
     // CSV 파일 열기
     std::ofstream csvFileIn(FileName1);
@@ -403,16 +408,12 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
         std::cerr << "Error opening CSV file." << std::endl;
     }
 
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(2); // 소수점 둘째 자리까지만
-    ss << "kp_" << kp << "_kd_" << kd << "_Hz_" << 1/sine_t;
-    std::string header = ss.str();
-    
     // 헤더 추가
-    csvFileIn << header << "\n";
+    csvFileIn << "Start file"
+              << "\n";
 
     // CSV 파일명 설정
-    std::string FileName2 = "../../READ/DrumData_out.txt";
+    std::string FileName2 = "../../READ/" + parameter + "_out.txt";
 
     // CSV 파일 열기
     std::ofstream csvFileOut(FileName2);
@@ -448,7 +449,8 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
                 std::shared_ptr<TMotor> &motor = entry.second;
 
-                if((int)motor->nodeId == 7){
+                if ((int)motor->nodeId == 7)
+                {
                     csvFileIn << std::dec << p_des << "0,0,0,0,0,0";
                 }
                 else
