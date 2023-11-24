@@ -1650,8 +1650,8 @@ void Task::SetHome()
         {"L_arm1", 1.0},
         {"R_arm2", 1.0},
         {"R_arm3", 1.0},
-        {"L_arm2", 1.0},
-        {"L_arm3", 1.0}};
+        {"L_arm2", -1.0},
+        {"L_arm3", -1.0}};
 
     for (const auto &socketPair : canUtils.sockets)
     {
@@ -1681,7 +1681,7 @@ void Task::SetHome()
         }
 
         double initialDirection = 0.2 * directionSettings[motor_pair.first];
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2 * initialDirection, 0, 4.5, 0);
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0,initialDirection, 0, 4.5, 2);
         // 모터에 연결된 canport를 사용해 신호를 보냄
         if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
         {
