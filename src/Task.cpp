@@ -382,7 +382,7 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     std::string folderName = "TuningData";
     std::string baseName = ss.str(); // ss.str()로 stringstream의 내용을 std::string으로 가져옵니다.
     fileName = folderName + "/" + baseName;
-    
+
     // CSV 파일을 쓰기 모드로 열기
 
     std::ofstream csvFile(fileName);
@@ -407,7 +407,6 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     // 헤더 추가
     csvFileIn << "kp_" << kp << ",kd_" << kd << ",period_" << sine_t << "\n";
 
-
     // CSV 파일명 설정
     std::string FileName2 = "../../READ/DrumData_out.txt";
 
@@ -421,7 +420,6 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
     // 헤더 추가
     csvFileOut << "CAN_ID,p_act,tff_des,tff_act\n"; // CSV 헤더
-
 
     struct can_frame frame;
 
@@ -446,15 +444,19 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
 
                 std::shared_ptr<TMotor> &motor = entry.second;
 
-                if((int)motor->nodeId == 7){
+                if ((int)motor->nodeId == 7)
+                {
                     csvFileIn << std::dec << p_des << "0,0,0,0,0,0\n";
                 }
-                else{
-                    for(int i=0; i<(int)motor->nodeId; i++){
+                else
+                {
+                    for (int i = 0; i < (int)motor->nodeId; i++)
+                    {
                         csvFileIn << "0,";
                     }
                     csvFileIn << std::dec << p_des << ",";
-                    for(int i=0; i<(6-(int)motor->nodeId); i++){
+                    for (int i = 0; i < (6 - (int)motor->nodeId); i++)
+                    {
                         csvFileIn << "0,";
                     }
                 }
@@ -1648,6 +1650,8 @@ void Task::SetHome()
     }
     for (auto &motor_pair : tmotors)
     {
+        if (motor_pair.first == "waist")
+            continue;
         std::shared_ptr<TMotor> &motor = motor_pair.second;
         auto interface_name = motor->interFaceName;
 
