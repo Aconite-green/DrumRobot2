@@ -63,14 +63,14 @@ struct CustomCompare
     {
         // 우선순위를 지정하는 정적(unordered_map) 맵. 문자열 키에 따라 숫자 우선순위가 지정됩니다.
         static std::unordered_map<std::string, int> priority = {
-            {"L_arm1", 0},
+            {"L_arm1", 2},
             {"L_arm2", 1},
-            {"L_arm3", 2},
-            {"R_arm1", 3},
+            {"L_arm3", 0},
+            {"R_arm1", 5},
             {"R_arm2", 4},
-            {"R_arm3", 5},
+            {"R_arm3", 3},
             {"waist", 6},
-            };
+        };
 
         // lhs(왼쪽 항목)의 우선순위를 찾습니다.
         auto lhsPriority = priority.find(lhs);
@@ -100,7 +100,6 @@ struct CustomCompare
     }
 };
 
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // Functions for SendLoopTask
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +111,6 @@ void handleError(ssize_t bytesWritten, const std::string &interface_name);
 /////////////////////////////////////////////////////////////////////////////////////////
 
 int kbhit();
-
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Functions for Qt
