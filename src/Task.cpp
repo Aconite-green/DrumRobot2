@@ -1640,7 +1640,6 @@ void Task::SetHome()
 
     // 각 모터의 방향 설정
     std::map<std::string, double> directionSettings = {
-        {"waist", 1.0},
         {"R_arm1", 1.0},
         {"L_arm1", 1.0},
         {"R_arm2", 1.0},
