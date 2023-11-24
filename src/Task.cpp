@@ -372,11 +372,10 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
     }
 
     /*
-    std::stringstream ss;
+
     std::string fileName;
 
-    ss << std::fixed << std::setprecision(2); // 소수점 둘째 자리까지만
-    ss << "kp_" << kp << "_kd_" << kd << "_period_" << sine_t << ".csv";
+
 
     // 파일 이름 자동 설정
     std::string folderName = "TuningData";
@@ -404,8 +403,13 @@ void Task::Tuning(float kp, float kd, float sine_t, const std::string selectedMo
         std::cerr << "Error opening CSV file." << std::endl;
     }
 
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(2); // 소수점 둘째 자리까지만
+    ss << "kp_" << kp << "_kd_" << kd << "_Hz_" << 1/sine_t;
+    std::string header = ss.str();
+    
     // 헤더 추가
-    csvFileIn << "kp_" << kp << ",kd_" << kd << ",period_" << sine_t << "\n";
+    csvFileIn << header << "\n";
 
     // CSV 파일명 설정
     std::string FileName2 = "../../READ/DrumData_out.txt";
