@@ -1638,7 +1638,17 @@ void Task::SetHome()
 {
     struct can_frame frameToProcess;
     Task::ActivateSensor();
-    getchar();
+
+    // 각 모터의 방향 설정
+    std::map<std::string, double> directionSettings = {
+        {"waist", 1.0},
+        {"R_arm1", 1.0},
+        {"L_arm1", 1.0},
+        {"R_arm2", 1.0},
+        {"R_arm3", 1.0},
+        {"L_arm2", 1.0},
+        {"L_arm3", 1.0}};
+
     for (const auto &socketPair : canUtils.sockets)
     {
         int hsocket = socketPair.second;
@@ -1666,8 +1676,8 @@ void Task::SetHome()
             continue; // 다음 모터로 넘어가기
         }
 
-        // 해당 모터를 0.2rad/sec로 이동시킴
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2, 0, 4.5, 0);
+        double initialDirection = 0.2 * directionSettings[motor_pair.first];
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0.2 * initialDirection, 0, 4.5, 0);
         // 모터에 연결된 canport를 사용해 신호를 보냄
         if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
         {
@@ -1732,7 +1742,7 @@ void Task::SetHome()
 
                     cout << "\nPress Enter to move to Home Position\n";
                     getchar();
-                    const double targetRadian = -M_PI / 2;
+                    const double targetRadian = -M_PI / 2 * directionSettings[motor_pair.first];
                     int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
 
                     auto startTime = std::chrono::system_clock::now();
