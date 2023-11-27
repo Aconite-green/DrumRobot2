@@ -1642,7 +1642,7 @@ void Task::CheckCurrentPosition()
 void Task::SetHome()
 {
     struct can_frame frameToProcess;
-    Task::ActivateSensor();
+    //Task::ActivateSensor();
 
     // 각 모터의 방향 설정
     std::map<std::string, double> directionSettings = {
@@ -1680,7 +1680,7 @@ void Task::SetHome()
             continue; // 다음 모터로 넘어가기
         }
 
-        double initialDirection = 0.2 * directionSettings[motor_pair.first];
+        double initialDirection = 0.1 * directionSettings[motor_pair.first];
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0,initialDirection, 0, 4.5, 2);
         // 모터에 연결된 canport를 사용해 신호를 보냄
         if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
