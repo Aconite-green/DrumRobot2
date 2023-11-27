@@ -1696,7 +1696,7 @@ void Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::
             {
                 // 모터를 멈추는 신호를 보냄
                 cout << motorName << " is at Sensor location!" << endl;
-                TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+                TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 1);
                 SendCommandToMotor(motor, frameToProcess, motorName);
 
                 // 그 상태에서 setzero 명령을 보냄 (현재 position을 0으로 인식)
@@ -1769,10 +1769,15 @@ void Task::SetHome()
         if (!PromptUserForHoming(motor_pair.first)) // 사용자에게 홈 설정을 묻는 함수
             continue;
 
-        double initialDirection = 0.2 * directionSettings[motor_pair.first];
 
-        double additionalTorque = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? 1 : 0;
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, additionalTorque);
+        if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2"){
+            double initialDirection = 0.8 * directionSettings[motor_pair.first];
+        }
+        else{
+            double initialDirection = 0.2 * directionSettings[motor_pair.first];
+        }
+
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, 0);
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
         MoveMotorToSensorLocation(motor, motor_pair.first); // 모터를 센서 위치까지 이동시키는 함수
