@@ -158,4 +158,8 @@ private:
     void SetHome();
     void CheckCurrentPosition();
     void FixMotorPosition();
+    void MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName);
+    void RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction);
+    void SendCommandToMotor(std::shared_ptr<TMotor> &motor, struct can_frame &frame, const std::string &motorName);
+    bool PromptUserForHoming(const std::string &motorName);
 };

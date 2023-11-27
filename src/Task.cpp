@@ -1639,10 +1639,108 @@ void Task::CheckCurrentPosition()
     }
 }
 
+void Task::SendCommandToMotor(std::shared_ptr<TMotor> &motor, struct can_frame &frame, const std::string &motorName)
+{
+    auto interface_name = motor->interFaceName;
+    if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
+    {
+        int socket_descriptor = canUtils.sockets.at(interface_name);
+
+        // 명령을 소켓으로 전송합니다.
+        ssize_t bytesWritten = write(socket_descriptor, &frame, sizeof(struct can_frame));
+        if (bytesWritten == -1)
+        {
+            std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
+            std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+            return;
+        }
+
+        // 명령에 대한 응답을 기다립니다.
+        ssize_t bytesRead = read(socket_descriptor, &frame, sizeof(struct can_frame));
+        if (bytesRead == -1)
+        {
+            std::cerr << "Failed to read from socket for interface: " << interface_name << std::endl;
+            std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+        }
+    }
+    else
+    {
+        std::cerr << "Socket not found for interface: " << interface_name << std::endl;
+    }
+}
+
+bool Task::PromptUserForHoming(const std::string &motorName)
+{
+    char userResponse;
+    std::cout << "Would you like to start homing mode for motor [" << motorName << "]? (y/n): ";
+    std::cin >> userResponse;
+    return userResponse == 'y';
+}
+
+void Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName)
+{
+    struct can_frame frameToProcess;
+    bool breakOut = false;
+
+    cout << "Moving " << motorName << " to sensor location.\n";
+
+    while (!breakOut)
+    {
+        // 모터를 이동시킨 후에 while문 안에 들어가 근접 센서로부터 값을 계속 읽어들임
+        USBIO_DI_ReadValue(DevNum, &DIValue);
+
+        for (int i = 0; i < 8; i++)
+        {
+            // 센서에 인식되면
+            if ((DIValue >> i) & 1)
+            {
+                // 모터를 멈추는 신호를 보냄
+                cout << motorName << " is at Sensor location!" << endl;
+                TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+                SendCommandToMotor(motor, frameToProcess, motorName);
+
+                // 그 상태에서 setzero 명령을 보냄 (현재 position을 0으로 인식)
+                fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
+                SendCommandToMotor(motor, frameToProcess, motorName);
+
+                breakOut = true;
+                break;
+            }
+        }
+    }
+}
+
+void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction)
+{
+    struct can_frame frameToProcess;
+    const double targetRadian = M_PI / 2 * direction;
+    int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
+
+    auto startTime = std::chrono::system_clock::now();
+    for (int step = 0; step < totalSteps; ++step)
+    {
+        auto currentTime = std::chrono::system_clock::now();
+        while (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() < 5)
+        {
+            // 5ms가 되기 전까지 기다림
+            currentTime = std::chrono::system_clock::now();
+        }
+
+        // 5ms마다 목표 위치 계산 및 프레임 전송
+        double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps);
+
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 50, 1, 0);
+        SendCommandToMotor(motor, frameToProcess, motorName);
+
+        // 다음 5ms 간격을 위해 시작 시간 업데이트
+        startTime = std::chrono::system_clock::now();
+    }
+}
+
 void Task::SetHome()
 {
     struct can_frame frameToProcess;
-    //Task::ActivateSensor();
+    Task::ActivateSensor();
 
     // 각 모터의 방향 설정
     std::map<std::string, double> directionSettings = {
@@ -1667,170 +1765,39 @@ void Task::SetHome()
         if (motor_pair.first == "waist")
             continue;
         std::shared_ptr<TMotor> &motor = motor_pair.second;
-        auto interface_name = motor->interFaceName;
 
-        // 사용자에게 해당 모터에 대한 홈 설정을 진행할지 묻기
-        char userResponse;
-        std::cout << "Would you like to start homing mode for motor [" << motor_pair.first << "]? (y/n): ";
-        std::cin >> userResponse;
+        if (!PromptUserForHoming(motor_pair.first)) // 사용자에게 홈 설정을 묻는 함수
+            continue;
 
-        if (userResponse != 'y')
+        double initialDirection = 0.2 * directionSettings[motor_pair.first];
+
+        double additionalTorque = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? 1 : 0;
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, additionalTorque);
+        SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+
+        MoveMotorToSensorLocation(motor, motor_pair.first); // 모터를 센서 위치까지 이동시키는 함수
+
+        cout << "\nPress Enter to move to Home Position\n";
+        getchar();
+
+        RotateMotor(motor, motor_pair.first, -directionSettings[motor_pair.first]);
+
+        cout << "----------------------moved 90 degree (Anti clock wise) --------------------------------- \n";
+        // 모터를 멈추는 신호를 보냄
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+        SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+
+        // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
+        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
+        SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+
+        // 상태 확인
+        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
+        SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+
+        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1")
         {
-            std::cout << "Skipping homing mode for motor [" << motor_pair.first << "]." << std::endl;
-            continue; // 다음 모터로 넘어가기
-        }
-
-        double initialDirection = 0.1 * directionSettings[motor_pair.first];
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0,initialDirection, 0, 4.5, 2);
-        // 모터에 연결된 canport를 사용해 신호를 보냄
-        if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
-        {
-            int socket_descriptor = canUtils.sockets.at(interface_name);
-            ssize_t bytesWritten = write(socket_descriptor, &frameToProcess, sizeof(struct can_frame));
-
-            if (bytesWritten == -1)
-            {
-                std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
-                std::cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
-            }
-        }
-        else
-        {
-            std::cerr << "Socket not found for interface: " << interface_name << std::endl;
-        }
-
-        cout << "Turning for sensing location\n";
-        bool breakOut = false;
-        while (!breakOut)
-        {
-            // 모터를 이동시킨후에 while문 안에들어가 근접센서로부터 값을 계속 읽어들임
-            USBIO_DI_ReadValue(DevNum, &DIValue);
-
-            for (int i = 0; i < 8; i++)
-            {
-
-                // 센서에 인식되면
-                if ((DIValue >> i) & 1)
-                {
-
-                    // 모터를 멈추는 신호를 보냄
-                    cout << motor_pair.first << " is at Sensor location!" << endl;
-                    TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
-                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "Motor [" << motorName << "] stopped for starting homing process" << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Motor [" << motorName << "] fail to stop for starting homing process " << std::endl;
-                                       }
-                                   });
-                    // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
-                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
-                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "zero set for motor [" << motorName << "]." << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
-                                       }
-                                   });
-                    CheckCurrentPosition();
-
-                    cout << "\nPress Enter to move to Home Position\n";
-                    getchar();
-                    const double targetRadian = -M_PI / 2 * directionSettings[motor_pair.first];
-                    int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
-
-                    auto startTime = std::chrono::system_clock::now();
-                    for (int step = 0; step < totalSteps; ++step)
-                    {
-                        auto currentTime = std::chrono::system_clock::now();
-                        while (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() < 5)
-                        {
-                            // 5ms가 되기 전까지 기다림
-                            currentTime = std::chrono::system_clock::now();
-                        }
-
-                        // 5ms마다 목표 위치 계산 및 프레임 전송
-                        double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps);
-                        double currentPositionDegrees = targetPosition * (180 / M_PI); // 라디안을 도로 변환
-
-                        for (int percentage = 10; percentage <= 100; percentage += 10)
-                        {
-                            if (step == (totalSteps * percentage / 100))
-                            {
-                                cout << "Current angle at " << percentage << "% step: " << currentPositionDegrees << " degrees" << endl;
-                            }
-                        }
-
-                        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 50, 1, 0);
-                        ssize_t bytesWritten = write(canUtils.sockets.at(interface_name), &frameToProcess, sizeof(struct can_frame));
-                        if (bytesWritten == -1)
-                        {
-                            std::cerr << "Failed to write to socket for interface: " << interface_name << std::endl;
-                        }
-
-                        // 다음 5ms 간격을 위해 시작 시간 업데이트
-                        startTime = std::chrono::system_clock::now();
-                    }
-
-                    cout << "----------------------moved 90 degree (Anti clock wise) --------------------------------- \n";
-                    // 모터를 멈추는 신호를 보냄
-                    TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
-                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "Motor [" << motorName << "] stopped for setting home process" << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Motor [" << motorName << "] fail to stop for setting home process " << std::endl;
-                                       }
-                                   });
-                    // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
-                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
-                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "zero set for motor [" << motorName << "]." << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Failed to set zero for motor [" << motorName << "]." << std::endl;
-                                       }
-                                   });
-                    // 상태 확인
-                    fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
-                    sendAndReceive(canUtils.sockets.at(motor->interFaceName), motor_pair.first, frameToProcess,
-                                   [](const std::string &motorName, bool success)
-                                   {
-                                       if (success)
-                                       {
-                                           std::cout << "Motor [" << motorName << "] status check passed." << std::endl;
-                                       }
-                                       else
-                                       {
-                                           std::cerr << "Motor [" << motorName << "] status check failed." << std::endl;
-                                       }
-                                   });
-
-                    breakOut = true;
-
-                    break;
-                }
-            }
+            RotateMotor(motor, motor_pair.first, directionSettings[motor_pair.first]);
         }
     }
 
