@@ -1679,33 +1679,41 @@ bool Task::PromptUserForHoming(const std::string &motorName)
 
 void Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName)
 {
-    struct can_frame frameToProcess;
+    //struct can_frame frameToProcess;
     bool breakOut = false;
 
     cout << "Moving " << motorName << " to sensor location.\n";
+
+    // 각 모터에 해당하는 sensor num
+    std::map<std::string, int> SensorNum = {
+        {"L_arm1", 0},
+        {"L_arm2", 1},
+        {"L_arm3", 2},
+        {"R_arm1", 0},
+        {"R_arm2", 0},
+        {"R_arm3", 0}
+    };
 
     while (!breakOut)
     {
         // 모터를 이동시킨 후에 while문 안에 들어가 근접 센서로부터 값을 계속 읽어들임
         USBIO_DI_ReadValue(DevNum, &DIValue);
 
-        for (int i = 0; i < 8; i++)
+        // 센서에 인식되면
+        if ((DIValue >> SensorNum[motorName]) & 1)
         {
-            // 센서에 인식되면
-            if ((DIValue >> i) & 1)
-            {
-                // 모터를 멈추는 신호를 보냄
-                cout << motorName << " is at Sensor location!" << endl;
-                TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 1);
-                SendCommandToMotor(motor, frameToProcess, motorName);
+            cout << motorName << " is at Sensor location!" << endl;
 
-                // 그 상태에서 setzero 명령을 보냄 (현재 position을 0으로 인식)
-                fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
-                SendCommandToMotor(motor, frameToProcess, motorName);
+            /*
+            // 모터를 멈추는 신호를 보냄
+            TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 1);
+            SendCommandToMotor(motor, frameToProcess, motorName);
 
-                breakOut = true;
-                break;
-            }
+            // 그 상태에서 setzero 명령을 보냄 (현재 position을 0으로 인식)
+            fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
+            SendCommandToMotor(motor, frameToProcess, motorName);
+            */
+            breakOut = true;
         }
     }
 }
@@ -1715,6 +1723,8 @@ void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorN
     struct can_frame frameToProcess;
     const double targetRadian = M_PI / 2 * direction;
     int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
+
+    CheckCurrentPosition();
 
     auto startTime = std::chrono::system_clock::now();
     for (int step = 0; step < totalSteps; ++step)
@@ -1727,7 +1737,7 @@ void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorN
         }
 
         // 5ms마다 목표 위치 계산 및 프레임 전송
-        double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps);
+        double targetPosition = motor->currentPos + targetRadian * (static_cast<double>(step) / totalSteps);
 
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 50, 1, 0);
         SendCommandToMotor(motor, frameToProcess, motorName);
@@ -1748,8 +1758,9 @@ void Task::SetHome()
         {"L_arm1", 1.0},
         {"R_arm2", 1.0},
         {"R_arm3", 1.0},
-        {"L_arm2", -1.0},
-        {"L_arm3", -1.0}};
+        {"L_arm2", 1.0},
+        {"L_arm3", 1.0}
+    };
 
     for (const auto &socketPair : canUtils.sockets)
     {
@@ -1769,16 +1780,14 @@ void Task::SetHome()
         if (!PromptUserForHoming(motor_pair.first)) // 사용자에게 홈 설정을 묻는 함수
             continue;
 
+        double initialDirection = 0.2 * directionSettings[motor_pair.first];
+        if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2")
+            initialDirection = 0.8 * directionSettings[motor_pair.first];
 
-        if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2"){
-            double initialDirection = 0.8 * directionSettings[motor_pair.first];
-        }
-        else{
-            double initialDirection = 0.2 * directionSettings[motor_pair.first];
-        }
 
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, 0);
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+        std::cout << "InitialDirection For speed loop : "<<initialDirection << endl;  
 
         MoveMotorToSensorLocation(motor, motor_pair.first); // 모터를 센서 위치까지 이동시키는 함수
 
