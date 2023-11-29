@@ -24,6 +24,11 @@ sudo apt-get update
 sudo apt-get install qt5-default
 sudo apt-get install libqt5charts5 libqt5charts5-dev
 
+
+your_username ALL=(ALL) NOPASSWD: /usr/bin/gdb
+launch.json gdb pathcheck
+chmod +x /home/syp/DrumRobot2/scripts/sudo-gdb.sh
+
     */
 
     // Motor Declariration
@@ -51,18 +56,11 @@ sudo apt-get install libqt5charts5 libqt5charts5-dev
 
     Task task(tmotors, maxonMotors);
 
-    ChartHandler chartHandler;
 
-    QApplication app(argc, argv);
-    QObject::connect(&chartHandler, &ChartHandler::displayChartSignal,
-                     &chartHandler, &ChartHandler::displayChartSlot);
-    QObject::connect(&chartHandler, &ChartHandler::requestQuit, &app, &QApplication::quit);
-
-    task.setChartHandler(&chartHandler); 
 
     std::thread threadLoop(std::ref(task));
-    int ret = app.exec();
+    
     threadLoop.join();
 
-    return ret;
+    return 0;
 }

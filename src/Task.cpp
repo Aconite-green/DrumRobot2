@@ -100,7 +100,6 @@ void Task::operator()()
         }
     }
     DeactivateControlTask();
-    emit chartHandler->requestQuit();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -530,7 +529,7 @@ void Task::TuningLoopTask()
     FixMotorPosition();
     std::string userInput, selectedMotor, fileName;
     float kp, kd, peakAngle;
-    float sine_t = 4.0;
+    float sine_t = 2.0;
     int cycles = 2, pathType;
 
     if (!tmotors.empty())
@@ -640,13 +639,6 @@ void Task::TuningLoopTask()
         {
             Task::Tuning(kp, kd, sine_t, selectedMotor, cycles, peakAngle, pathType);
         }
-        else if (userInput[0] == 'a')
-        {
-            if (chartHandler)
-            {
-                emit chartHandler->displayChartSignal();
-            }
-        }
     }
 }
 
@@ -654,18 +646,30 @@ void Task::InitializeTuningParameters(const std::string selectedMotor, float &kp
 {
     if (selectedMotor == "waist")
     {
-        kp = 200.0;
-        kd = 1.0;
+        kp = 350.0;
+        kd = 3.5;
         peakAngle = 30;
         pathType = 2;
     }
-    else if (selectedMotor == "R_arm1" || selectedMotor == "L_arm1" ||
-             selectedMotor == "R_arm2" || selectedMotor == "R_arm3" ||
-             selectedMotor == "L_arm2" || selectedMotor == "L_arm3")
+    else if (selectedMotor == "R_arm1" || selectedMotor == "L_arm1")
     {
-        kp = 50.0; // 예시 값, 실제 필요한 값으로 조정
-        kd = 1.0;  // 예시 값, 실제 필요한 값으로 조정
-        peakAngle = 90;
+        kp = 170.0;
+        kd = 2.5;
+        peakAngle = 120;
+        pathType = 1;
+    }
+    else if (selectedMotor == "R_arm2" || selectedMotor == "L_arm2")
+    {
+        kp = 250.0;
+        kd = 2.5;
+        peakAngle = -90;
+        pathType = 1;
+    }
+    else if (selectedMotor == "R_arm3" || selectedMotor == "L_arm3")
+    {
+        kp = 200.0;
+        kd = 3.5;
+        peakAngle = -90;
         pathType = 1;
     }
     // 추가적인 모터 이름과 매개변수를 이곳에 추가할 수 있습니다.
@@ -1679,20 +1683,25 @@ bool Task::PromptUserForHoming(const std::string &motorName)
 
 void Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName)
 {
-    //struct can_frame frameToProcess;
+    struct can_frame frameToProcess;
     bool breakOut = false;
 
     cout << "Moving " << motorName << " to sensor location.\n";
 
     // 각 모터에 해당하는 sensor num
     std::map<std::string, int> SensorNum = {
-        {"L_arm1", 0},
-        {"L_arm2", 1},
+        {"L_arm1", 1},
+        {"L_arm2", 0},
         {"L_arm3", 2},
         {"R_arm1", 0},
         {"R_arm2", 0},
         {"R_arm3", 0}
     };
+
+    double AddTorque = 0;
+    if(motorName == "L_arm2" || motorName == "R_arm2"){
+        AddTorque = -3;
+    }
 
     while (!breakOut)
     {
@@ -1706,7 +1715,7 @@ void Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::
 
             /*
             // 모터를 멈추는 신호를 보냄
-            TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 1);
+            TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 4.5, AddTorque);
             SendCommandToMotor(motor, frameToProcess, motorName);
 
             // 그 상태에서 setzero 명령을 보냄 (현재 position을 0으로 인식)
@@ -1758,8 +1767,8 @@ void Task::SetHome()
         {"L_arm1", 1.0},
         {"R_arm2", 1.0},
         {"R_arm3", 1.0},
-        {"L_arm2", 1.0},
-        {"L_arm3", 1.0}
+        {"L_arm2", -1.0},
+        {"L_arm3", -1.0}
     };
 
     for (const auto &socketPair : canUtils.sockets)
@@ -1782,7 +1791,7 @@ void Task::SetHome()
 
         double initialDirection = 0.2 * directionSettings[motor_pair.first];
         if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2")
-            initialDirection = 0.8 * directionSettings[motor_pair.first];
+            initialDirection = 0.9 * directionSettings[motor_pair.first];
 
 
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, 0);
@@ -1798,8 +1807,8 @@ void Task::SetHome()
 
         cout << "----------------------moved 90 degree (Anti clock wise) --------------------------------- \n";
         // 모터를 멈추는 신호를 보냄
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
-        SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+        //TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+        //SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
         // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
