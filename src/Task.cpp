@@ -1018,7 +1018,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         Qi = connect(c_MotorAngle, standby, k, n);
         q_ready.push_back(Qi);
 
-        for (auto &entry : tmotors)
+        for (auto &entry : tmotors) 
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
