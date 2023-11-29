@@ -24,20 +24,25 @@ sudo apt-get update
 sudo apt-get install qt5-default
 sudo apt-get install libqt5charts5 libqt5charts5-dev
 
+
+your_username ALL=(ALL) NOPASSWD: /usr/bin/gdb
+launch.json gdb pathcheck
+chmod +x /home/syp/DrumRobot2/scripts/sudo-gdb.sh
+
     */
 
     // Motor Declariration
     std::map<std::string, std::shared_ptr<TMotor>, CustomCompare> tmotors;
 
-    tmotors["waist"] = make_shared<TMotor>(0x007, "AK10_9", "can0");
+    //tmotors["waist"] = make_shared<TMotor>(0x007, "AK10_9", "can0");
 
     //tmotors["R_arm1"] = make_shared<TMotor>(0x001, "AK70_10", "can0");
-    tmotors["L_arm1"] = make_shared<TMotor>(0x002, "AK70_10", "can0");
+    //tmotors["L_arm1"] = make_shared<TMotor>(0x002, "AK70_10", "can0");
     // tmotors["R_arm2"] = make_shared<TMotor>(0x003, "AK70_10", "can0");
 
-    //tmotors["R_arm3"] = make_shared<TMotor>(0x004, "AK70_10", "can0");
-    tmotors["L_arm2"] = make_shared<TMotor>(0x005, "AK70_10", "can0");
-    tmotors["L_arm3"] = make_shared<TMotor>(0x006, "AK70_10", "can0");
+    tmotors["R_arm3"] = make_shared<TMotor>(0x004, "AK70_10", "can0");
+    //tmotors["L_arm2"] = make_shared<TMotor>(0x005, "AK70_10", "can0");
+    //tmotors["L_arm3"] = make_shared<TMotor>(0x006, "AK70_10", "can0");
 
     map<string, shared_ptr<MaxonMotor>> maxonMotors;
     /*maxonMotors["a_maxon"] = make_shared<MaxonMotor>(0x001,
@@ -51,18 +56,11 @@ sudo apt-get install libqt5charts5 libqt5charts5-dev
 
     Task task(tmotors, maxonMotors);
 
-    ChartHandler chartHandler;
 
-    QApplication app(argc, argv);
-    QObject::connect(&chartHandler, &ChartHandler::displayChartSignal,
-                     &chartHandler, &ChartHandler::displayChartSlot);
-    QObject::connect(&chartHandler, &ChartHandler::requestQuit, &app, &QApplication::quit);
-
-    task.setChartHandler(&chartHandler); 
 
     std::thread threadLoop(std::ref(task));
-    int ret = app.exec();
+    
     threadLoop.join();
 
-    return ret;
+    return 0;
 }
