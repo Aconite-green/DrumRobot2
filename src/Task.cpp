@@ -1789,7 +1789,7 @@ void Task::SetHome()
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
         std::cout << "InitialDirection For speed loop : "<<initialDirection << endl;  
 
-        MoveMotorToSensorLocation(motor, motor_pair.first); // 모터를 센서 위치까지 이동시키는 함수
+        //MoveMotorToSensorLocation(motor, motor_pair.first); // 모터를 센서 위치까지 이동시키는 함수
 
         cout << "\nPress Enter to move to Home Position\n";
         getchar();
