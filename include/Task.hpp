@@ -121,7 +121,7 @@ private:
 
     string trimWhitespace(const std::string &str);
     vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n);
-    void iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, vector<double> &V0, int t1, int t2, int t);
+    void iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, vector<double> &V0, double t1, double t2, double t);
     vector<double> IKfun(vector<double> &P1, vector<double> &P2, vector<double> &R, double s, double z0);
     void GetMusicSheet();
     void GetReadyArr(queue<can_frame> &sendBuffer);

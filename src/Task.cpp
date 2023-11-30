@@ -79,9 +79,9 @@ void Task::operator()()
             canUtils.restart_all_can_ports();
             std::cout << "Performing ...... \n";
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
-            std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
+            //std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
             sendThread.join();
-            readThread.join();
+            //readThread.join();
             std::cout << "........End performance \n";
         }
         else if (userInput == 't')
@@ -716,7 +716,64 @@ vector<double> Task::connect(vector<double> &Q1, vector<double> &Q2, int k, int 
     return Qi;
 }
 
-void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, vector<double> &V0, int t1, int t2, int t)
+// 행렬 전치 함수
+vector<vector<double>> transpose(vector<vector<double>>& matrix) {
+    size_t rows = matrix.size();
+    size_t cols = matrix[0].size();
+    std::vector<std::vector<double>> result(cols, std::vector<double>(rows, 0.0));
+
+    for (size_t i = 0; i < rows; ++i) {
+        for (size_t j = 0; j < cols; ++j) {
+            result[j][i] = matrix[i][j];
+        }
+    }
+
+    return result;
+}
+
+// 행렬 역행렬 계산 함수
+vector<vector<double>> inverseMatrix(vector<vector<double>>& matrix) {
+    // 행렬 크기 확인 (3x3 행렬으로 가정)
+    if (matrix.size() != 3 || matrix[0].size() != 3 || matrix[1].size() != 3 || matrix[2].size() != 3) {
+        std::cerr << "Invalid matrix size. The function supports only 3x3 matrices.\n";
+        return {};
+    }
+
+    double a11 = matrix[0][0], a12 = matrix[0][1], a13 = matrix[0][2];
+    double a21 = matrix[1][0], a22 = matrix[1][1], a23 = matrix[1][2];
+    double a31 = matrix[2][0], a32 = matrix[2][1], a33 = matrix[2][2];
+
+    // 행렬식 계산
+    double det = a11 * (a22 * a33 - a23 * a32) - a12 * (a21 * a33 - a23 * a31) + a13 * (a21 * a32 - a22 * a31);
+
+    // 행렬식이 0이면 역행렬이 존재하지 않음
+    if (det == 0.0) {
+        std::cerr << "The matrix is singular; it does not have an inverse.\n";
+        return {};
+    }
+
+    // 여인수 행렬 계산
+    std::vector<std::vector<double>> cofactorMatrix = {
+        {(a22 * a33 - a23 * a32), -(a21 * a33 - a23 * a31), (a21 * a32 - a22 * a31)},
+        {-(a12 * a33 - a13 * a32), (a11 * a33 - a13 * a31), -(a11 * a32 - a12 * a31)},
+        {(a12 * a23 - a13 * a22), -(a11 * a23 - a13 * a21), (a11 * a22 - a12 * a21)}
+    };
+
+    // 전치 행렬 계산
+    std::vector<std::vector<double>> adjugateMatrix = transpose(cofactorMatrix);
+
+    // 역행렬 계산
+    std::vector<std::vector<double>> inverse = adjugateMatrix;
+    for (auto& row : inverse) {
+        for (double& element : row) {
+            element /= det;
+        }
+    }
+
+    return inverse;
+}
+
+void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, vector<double> &V0, double t1, double t2, double t)
 {
     vector<double> V1;
     vector<double> p_out;
@@ -732,36 +789,21 @@ void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, 
         double d = 0;
         double e = V0[i];
 
-        vector<vector<double>> T = {
+        vector<vector<double>> M;
+        M = {
             {20.0 * pow(t1, 2), 12.0 * t1, 6.0},
             {5.0 * pow(t1, 4), 4.0 * pow(t1, 3), 3.0 * pow(t1, 2)},
             {pow(t1, 5), pow(t1, 4), pow(t1, 3)}
         };
-
+        vector<vector<double>> invM = inverseMatrix(M);
         vector<double> ANS = {0, V1[i] - V0[i], P1[i] - P0[i] - V0[i] * t1};
-
-        vector<vector<double>> invT(3, vector<double>(3));
-        // Calculate the inverse of T
-        double detT = T[0][0] * (T[1][1] * T[2][2] - T[1][2] * T[2][1]) -
-                       T[0][1] * (T[1][0] * T[2][2] - T[1][2] * T[2][0]) +
-                       T[0][2] * (T[1][0] * T[2][1] - T[1][1] * T[2][0]);
-
-        invT[0][0] = (T[1][1] * T[2][2] - T[1][2] * T[2][1]) / detT;
-        invT[0][1] = (T[0][2] * T[2][1] - T[0][1] * T[2][2]) / detT;
-        invT[0][2] = (T[0][1] * T[1][2] - T[0][2] * T[1][1]) / detT;
-        invT[1][0] = (T[1][2] * T[2][0] - T[1][0] * T[2][2]) / detT;
-        invT[1][1] = (T[0][0] * T[2][2] - T[0][2] * T[2][0]) / detT;
-        invT[1][2] = (T[0][2] * T[1][0] - T[0][0] * T[1][2]) / detT;
-        invT[2][0] = (T[1][0] * T[2][1] - T[1][1] * T[2][0]) / detT;
-        invT[2][1] = (T[0][1] * T[2][0] - T[0][0] * T[2][1]) / detT;
-        invT[2][2] = (T[0][0] * T[1][1] - T[0][1] * T[1][0]) / detT;
 
         // Multiply the inverse of T with ANS
         vector<double> tem(3);
         for (size_t j = 0; j < 3; ++j) {
             tem[j] = 0;
             for (size_t k = 0; k < 3; ++k) {
-                tem[j] += invT[j][k] * ANS[k];
+                tem[j] += invM[j][k] * ANS[k];
             }
         }
 
