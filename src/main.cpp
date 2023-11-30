@@ -27,7 +27,7 @@ sudo apt-get install libqt5charts5 libqt5charts5-dev
 
 your_username ALL=(ALL) NOPASSWD: /usr/bin/gdb
 launch.json gdb pathcheck
-chmod +x /home/syp/DrumRobot2/scripts/sudo-gdb.sh
+chmod +x /home/shy/DrumRobot2/scripts/sudo-gdb.sh
 
     */
 

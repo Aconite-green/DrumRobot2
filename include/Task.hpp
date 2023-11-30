@@ -95,7 +95,7 @@ private:
     double c_R = 0; // 오른손 현재 악기 유무
     double c_L = 0; // 왼손 현재 악기 유무
 
-    /*
+    /* 실측갑 입력할 것
     vector<double> P1 = {0.265, -0.6187, -0.0532};	 // RightArm Standby
     vector<double> P2 = {-0.265, -0.6187, -0.0532}; // LeftArm Standby
     int n_inst = 10;
@@ -112,13 +112,16 @@ private:
     double s = 0.600;
     double z0 = 0.000;
 
-    vector<vector<double>> q;
+    vector<double> Q1, Q2, Q3, Q4;
+    vector<vector<double>> p;
+    vector<vector<double>> v;
 
     map<string, int> motor_mapping = {
         {"L_arm1", 2}, {"L_arm2", 5}, {"L_arm3", 6}, {"R_arm1", 1}, {"R_arm2", 3}, {"R_arm3", 4}, {"waist", 0}};
 
     string trimWhitespace(const std::string &str);
     vector<double> connect(vector<double> &Q1, vector<double> &Q2, int k, int n);
+    void iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, vector<double> &V0, int t1, int t2, int t);
     vector<double> IKfun(vector<double> &P1, vector<double> &P2, vector<double> &R, double s, double z0);
     void GetMusicSheet();
     void GetReadyArr(queue<can_frame> &sendBuffer);
