@@ -679,6 +679,7 @@ void Task::setChartHandler(ChartHandler *handler)
 {
     chartHandler = handler;
 }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for DrumRobot PathGenerating
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -716,61 +717,35 @@ vector<double> Task::connect(vector<double> &Q1, vector<double> &Q2, int k, int 
     return Qi;
 }
 
-// 행렬 전치 함수
-vector<vector<double>> transpose(vector<vector<double>>& matrix) {
-    size_t rows = matrix.size();
-    size_t cols = matrix[0].size();
-    std::vector<std::vector<double>> result(cols, std::vector<double>(rows, 0.0));
-
-    for (size_t i = 0; i < rows; ++i) {
-        for (size_t j = 0; j < cols; ++j) {
-            result[j][i] = matrix[i][j];
-        }
-    }
-
-    return result;
+// 행렬의 determinant 계산 함수
+double determinant(double mat[3][3]) {
+    return mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2]) -
+           mat[0][1] * (mat[1][0] * mat[2][2] - mat[2][0] * mat[1][2]) +
+           mat[0][2] * (mat[1][0] * mat[2][1] - mat[2][0] * mat[1][1]);
 }
 
-// 행렬 역행렬 계산 함수
-vector<vector<double>> inverseMatrix(vector<vector<double>>& matrix) {
-    // 행렬 크기 확인 (3x3 행렬으로 가정)
-    if (matrix.size() != 3 || matrix[0].size() != 3 || matrix[1].size() != 3 || matrix[2].size() != 3) {
-        std::cerr << "Invalid matrix size. The function supports only 3x3 matrices.\n";
-        return {};
+// 역행렬 계산 함수
+void inverseMatrix(double mat[3][3], double inv[3][3]) {
+    double det = determinant(mat);
+
+    if (det == 0) {
+        std::cerr << "역행렬이 존재하지 않습니다." << std::endl;
+        return;
     }
 
-    double a11 = matrix[0][0], a12 = matrix[0][1], a13 = matrix[0][2];
-    double a21 = matrix[1][0], a22 = matrix[1][1], a23 = matrix[1][2];
-    double a31 = matrix[2][0], a32 = matrix[2][1], a33 = matrix[2][2];
+    double invDet = 1.0 / det;
 
-    // 행렬식 계산
-    double det = a11 * (a22 * a33 - a23 * a32) - a12 * (a21 * a33 - a23 * a31) + a13 * (a21 * a32 - a22 * a31);
+    inv[0][0] = (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2]) * invDet;
+    inv[0][1] = (mat[0][2] * mat[2][1] - mat[0][1] * mat[2][2]) * invDet;
+    inv[0][2] = (mat[0][1] * mat[1][2] - mat[0][2] * mat[1][1]) * invDet;
 
-    // 행렬식이 0이면 역행렬이 존재하지 않음
-    if (det == 0.0) {
-        std::cerr << "The matrix is singular; it does not have an inverse.\n";
-        return {};
-    }
+    inv[1][0] = (mat[1][2] * mat[2][0] - mat[1][0] * mat[2][2]) * invDet;
+    inv[1][1] = (mat[0][0] * mat[2][2] - mat[0][2] * mat[2][0]) * invDet;
+    inv[1][2] = (mat[1][0] * mat[0][2] - mat[0][0] * mat[1][2]) * invDet;
 
-    // 여인수 행렬 계산
-    std::vector<std::vector<double>> cofactorMatrix = {
-        {(a22 * a33 - a23 * a32), -(a21 * a33 - a23 * a31), (a21 * a32 - a22 * a31)},
-        {-(a12 * a33 - a13 * a32), (a11 * a33 - a13 * a31), -(a11 * a32 - a12 * a31)},
-        {(a12 * a23 - a13 * a22), -(a11 * a23 - a13 * a21), (a11 * a22 - a12 * a21)}
-    };
-
-    // 전치 행렬 계산
-    std::vector<std::vector<double>> adjugateMatrix = transpose(cofactorMatrix);
-
-    // 역행렬 계산
-    std::vector<std::vector<double>> inverse = adjugateMatrix;
-    for (auto& row : inverse) {
-        for (double& element : row) {
-            element /= det;
-        }
-    }
-
-    return inverse;
+    inv[2][0] = (mat[1][0] * mat[2][1] - mat[2][0] * mat[1][1]) * invDet;
+    inv[2][1] = (mat[2][0] * mat[0][1] - mat[0][0] * mat[2][1]) * invDet;
+    inv[2][2] = (mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1]) * invDet;
 }
 
 void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, vector<double> &V0, double t1, double t2, double t)
@@ -780,7 +755,7 @@ void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, 
     vector<double> v_out;
     for (size_t i = 0; i < P0.size(); ++i) 
     {
-        if ((P1[i] - P0[i]) / (P2[i] - P1[i]) > 0) 
+        if ((P1[i] - P0[i]) / (P2[i] - P1[i]) > 0)
             V1.push_back((P2[i] - P0[i]) / t2);
         else
             V1.push_back(0);
@@ -789,17 +764,17 @@ void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, 
         double d = 0;
         double e = V0[i];
 
-        vector<vector<double>> M;
-        M = {
+        double M[3][3] = {
             {20.0 * pow(t1, 2), 12.0 * t1, 6.0},
             {5.0 * pow(t1, 4), 4.0 * pow(t1, 3), 3.0 * pow(t1, 2)},
             {pow(t1, 5), pow(t1, 4), pow(t1, 3)}
         };
-        vector<vector<double>> invM = inverseMatrix(M);
-        vector<double> ANS = {0, V1[i] - V0[i], P1[i] - P0[i] - V0[i] * t1};
+        double ANS[3] = {0, V1[i] - V0[i], P1[i] - P0[i] - V0[i] * t1};
 
+        double invM[3][3];
+        inverseMatrix(M, invM);
         // Multiply the inverse of T with ANS
-        vector<double> tem(3);
+        double tem[3];
         for (size_t j = 0; j < 3; ++j) {
             tem[j] = 0;
             for (size_t k = 0; k < 3; ++k) {
@@ -1198,10 +1173,12 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 {
     struct can_frame frame;
 
+    /*
     for (int i = 0; i < 7; i++)
     {
         cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
     }
+    */
 
     // 처음 시작할 때 Q2, Q4 모두 계산
     if(line == 0){
@@ -1326,10 +1303,10 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
     double t1 = time_arr[line-1];
     double t2 = time_arr[line];
     double t = 0.005;
-    int n = t1 / t;
+    int n = round(t1 / t);
     vector<double> Pi;
     vector<double> Vi;
-    vector<double>& V0 = v.back();
+    vector<double> V0 = v.back();
     for(int i = 0; i < n; i++)
     {
         iconnect(c_MotorAngle, Q1, Q2, V0, t1/2, t1, t*i);
@@ -1451,6 +1428,23 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
             continue;
         }
 
+        if (line < end)
+        {
+            cout << "line : " << line << ", end : " << end << "\n";
+            PathLoopTask(sendBuffer);
+            std::cout << sendBuffer.size() << "\n";
+            line++;
+        }
+        else if (line == end)
+        {
+            cout << "Turn Back\n";
+            GetBackArr();
+            line++;
+            state = Terminate;
+            cout << "Performance is Over\n";
+        }
+
+        /*
         if (sendBuffer.size() <= 10)
         {
             if (line < end)
@@ -1504,8 +1498,73 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                 }
             }
         }
+        */
     }
 
+    // CSV 파일명 설정
+    std::string pFileName = "p_in.csv";
+
+    // CSV 파일 열기
+    std::ofstream pFile(pFileName);
+
+    if (!pFile.is_open())
+    {
+        std::cerr << "Error opening CSV file." << std::endl;
+    }
+
+    // 헤더 추가
+    pFile << "0x007,0x001,0x002,0x003,0x004,0x005,0x006\n";
+
+    // 2차원 벡터의 데이터를 CSV 파일로 쓰기
+    for (const auto &row : p)
+    {
+        for (const double cell : row)
+        {
+            pFile << std::fixed << std::setprecision(5) << cell;
+            if (&cell != &row.back())
+            {
+                pFile << ","; // 쉼표로 셀 구분
+            }
+        }
+        pFile << "\n"; // 다음 행으로 이동
+    }
+
+    // CSV 파일 닫기
+    pFile.close();
+
+
+    // CSV 파일명 설정
+    std::string vFileName = "v_in.csv";
+
+    // CSV 파일 열기
+    std::ofstream vFile(vFileName);
+
+    if (!vFile.is_open())
+    {
+        std::cerr << "Error opening CSV file." << std::endl;
+    }
+
+    // 헤더 추가
+    vFile << "0x007,0x001,0x002,0x003,0x004,0x005,0x006\n";
+
+    // 2차원 벡터의 데이터를 CSV 파일로 쓰기
+    for (const auto &row : v)
+    {
+        for (const double cell : row)
+        {
+            vFile << std::fixed << std::setprecision(5) << cell;
+            if (&cell != &row.back())
+            {
+                vFile << ","; // 쉼표로 셀 구분
+            }
+        }
+        vFile << "\n"; // 다음 행으로 이동
+    }
+
+    // CSV 파일 닫기
+    vFile.close();
+
+    /*
     // CSV 파일명 설정
     std::string csvFileName = "TuningData/DrumData_in.txt";
 
@@ -1536,8 +1595,9 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
     // CSV 파일 닫기
     csvFile.close();
+    */
 
-    std::cout << "연주 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
+    std::cout << "연주 CSV 파일이 생성되었습니다: " << std::endl;
 
     std::cout << "SendLoop terminated\n";
 }
