@@ -79,9 +79,9 @@ void Task::operator()()
             canUtils.restart_all_can_ports();
             std::cout << "Performing ...... \n";
             std::thread sendThread(&Task::SendLoopTask, this, std::ref(sendBuffer));
-            //std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
+            std::thread readThread(&Task::RecieveLoopTask, this, std::ref(recieveBuffer));
             sendThread.join();
-            //readThread.join();
+            readThread.join();
             std::cout << "........End performance \n";
         }
         else if (userInput == 't')
@@ -1068,7 +1068,7 @@ void Task::GetMusicSheet()
 
     file.close();
 
-    end = RF.size();
+    total_line = RF.size();
 }
 
 void Task::GetReadyArr(queue<can_frame> &sendBuffer)
@@ -1303,7 +1303,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
     double t1 = time_arr[line-1];
     double t2 = time_arr[line];
     double t = 0.005;
-    int n = round(t1 / t);
+    int n = round((t1 / 2) / t);
     vector<double> Pi;
     vector<double> Vi;
     vector<double> V0 = v.back();
@@ -1423,38 +1423,16 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
     while (state.load() != Terminate)
     {
 
-        if (state.load() == Pause)
-        {
-            continue;
-        }
-
-        if (line < end)
-        {
-            cout << "line : " << line << ", end : " << end << "\n";
-            PathLoopTask(sendBuffer);
-            std::cout << sendBuffer.size() << "\n";
-            line++;
-        }
-        else if (line == end)
-        {
-            cout << "Turn Back\n";
-            GetBackArr();
-            line++;
-            state = Terminate;
-            cout << "Performance is Over\n";
-        }
-
-        /*
         if (sendBuffer.size() <= 10)
         {
-            if (line < end)
+            if (line < total_line)
             {
-                cout << "line : " << line << ", end : " << end << "\n";
+                cout << "line : " << line << ", total_line : " << total_line << "\n";
                 PathLoopTask(sendBuffer);
                 std::cout << sendBuffer.size() << "\n";
                 line++;
             }
-            else if (line == end)
+            else if (line == total_line)
             {
                 cout << "Turn Back\n";
                 GetBackArr();
@@ -1498,7 +1476,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
                 }
             }
         }
-        */
     }
 
     // CSV 파일명 설정
