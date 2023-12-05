@@ -718,17 +718,20 @@ vector<double> Task::connect(vector<double> &Q1, vector<double> &Q2, int k, int 
 }
 
 // 행렬의 determinant 계산 함수
-double determinant(double mat[3][3]) {
+double determinant(double mat[3][3])
+{
     return mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2]) -
            mat[0][1] * (mat[1][0] * mat[2][2] - mat[2][0] * mat[1][2]) +
            mat[0][2] * (mat[1][0] * mat[2][1] - mat[2][0] * mat[1][1]);
 }
 
 // 역행렬 계산 함수
-void inverseMatrix(double mat[3][3], double inv[3][3]) {
+void inverseMatrix(double mat[3][3], double inv[3][3])
+{
     double det = determinant(mat);
 
-    if (det == 0) {
+    if (det == 0)
+    {
         std::cerr << "역행렬이 존재하지 않습니다." << std::endl;
         return;
     }
@@ -753,7 +756,7 @@ void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, 
     vector<double> V1;
     vector<double> p_out;
     vector<double> v_out;
-    for (size_t i = 0; i < P0.size(); ++i) 
+    for (size_t i = 0; i < P0.size(); ++i)
     {
         if ((P1[i] - P0[i]) / (P2[i] - P1[i]) > 0)
             V1.push_back((P2[i] - P0[i]) / t2);
@@ -767,17 +770,18 @@ void Task::iconnect(vector<double> &P0, vector<double> &P1, vector<double> &P2, 
         double M[3][3] = {
             {20.0 * pow(t1, 2), 12.0 * t1, 6.0},
             {5.0 * pow(t1, 4), 4.0 * pow(t1, 3), 3.0 * pow(t1, 2)},
-            {pow(t1, 5), pow(t1, 4), pow(t1, 3)}
-        };
+            {pow(t1, 5), pow(t1, 4), pow(t1, 3)}};
         double ANS[3] = {0, V1[i] - V0[i], P1[i] - P0[i] - V0[i] * t1};
 
         double invM[3][3];
         inverseMatrix(M, invM);
         // Multiply the inverse of T with ANS
         double tem[3];
-        for (size_t j = 0; j < 3; ++j) {
+        for (size_t j = 0; j < 3; ++j)
+        {
             tem[j] = 0;
-            for (size_t k = 0; k < 3; ++k) {
+            for (size_t k = 0; k < 3; ++k)
+            {
                 tem[j] += invM[j][k] * ANS[k];
             }
         }
@@ -1068,7 +1072,7 @@ void Task::GetMusicSheet()
 
     file.close();
 
-    total_line = RF.size();
+    end = RF.size();
 }
 
 void Task::GetReadyArr(queue<can_frame> &sendBuffer)
@@ -1077,9 +1081,13 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     struct can_frame frameToProcess;
     chrono::system_clock::time_point external = std::chrono::system_clock::now();
 
-    CheckCurrentPosition();
     vector<double> Qi;
     vector<vector<double>> q_ready;
+    for (auto &entry : tmotors)
+    {
+        std::shared_ptr<TMotor> &motor = entry.second;
+        c_MotorAngle[motor_mapping[entry.first]] = motor->currentPos;
+    }
 
     //// 준비자세 배열 생성
     int n = 800;
@@ -1099,38 +1107,6 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     }
 
     c_MotorAngle = Qi;
-
-    /*
-    // CSV 파일명 설정
-    std::string csvFileName = "DrumReadyData_in";
-
-    // CSV 파일 열기
-    std::ofstream csvFile(csvFileName);
-
-    if (!csvFile.is_open())
-    {
-        std::cerr << "Error opening CSV file." << std::endl;
-    }
-
-    // 2차원 벡터의 데이터를 CSV 파일로 쓰기
-    for (const auto &row : q_ready)
-    {
-        for (const double cell : row)
-        {
-            csvFile << std::fixed << std::setprecision(5) << cell;
-            if (&cell != &row.back())
-            {
-                csvFile << ","; // 쉼표로 셀 구분
-            }
-        }
-        csvFile << "\n"; // 다음 행으로 이동
-    }
-
-    // CSV 파일 닫기
-    csvFile.close();
-
-    std::cout << "준비동작 CSV 파일이 생성되었습니다: " << csvFileName << std::endl;
-    */
 
     //// 준비자세 동작
     while (sendBuffer.size() != 0)
@@ -1173,15 +1149,9 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
 {
     struct can_frame frame;
 
-    /*
-    for (int i = 0; i < 7; i++)
-    {
-        cout << "Current Motor Angle : " << c_MotorAngle[i] << "\n";
-    }
-    */
-
     // 처음 시작할 때 Q2, Q4 모두 계산
-    if(line == 0){
+    if (line == 0)
+    {
         c_R = 0;
         c_L = 0;
 
@@ -1300,16 +1270,16 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
     p_R = c_R;
     p_L = c_L;
 
-    double t1 = time_arr[line-1];
+    double t1 = time_arr[line - 1];
     double t2 = time_arr[line];
     double t = 0.005;
     int n = round((t1 / 2) / t);
     vector<double> Pi;
     vector<double> Vi;
     vector<double> V0 = v.back();
-    for(int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++)
     {
-        iconnect(c_MotorAngle, Q1, Q2, V0, t1/2, t1, t*i);
+        iconnect(c_MotorAngle, Q1, Q2, V0, t1 / 2, t1, t * i);
         Pi = p.back();
         Vi = v.back();
 
@@ -1323,9 +1293,9 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         }
     }
     V0 = v.back();
-    for(int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++)
     {
-        iconnect(Q1, Q2, Q3, V0, t1/2, (t1+t2)/2, t*i);
+        iconnect(Q1, Q2, Q3, V0, t1 / 2, (t1 + t2) / 2, t * i);
         Pi = p.back();
         Vi = v.back();
 
@@ -1341,7 +1311,6 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
     c_MotorAngle = p.back();
     Q1 = Q3;
     Q2 = Q4;
-
 }
 
 void Task::GetBackArr()
@@ -1425,14 +1394,14 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
         if (sendBuffer.size() <= 10)
         {
-            if (line < total_line)
+            if (line < end)
             {
-                cout << "line : " << line << ", total_line : " << total_line << "\n";
+                cout << "line : " << line << ", total_line : " << end << "\n";
                 PathLoopTask(sendBuffer);
                 std::cout << sendBuffer.size() << "\n";
                 line++;
             }
-            else if (line == total_line)
+            else if (line == end)
             {
                 cout << "Turn Back\n";
                 GetBackArr();
@@ -1508,7 +1477,6 @@ void Task::SendLoopTask(std::queue<can_frame> &sendBuffer)
 
     // CSV 파일 닫기
     pFile.close();
-
 
     // CSV 파일명 설정
     std::string vFileName = "v_in.csv";
@@ -1771,6 +1739,8 @@ void Task::ActivateSensor()
 
     USBIO_GetDITotal(DevNum, &total_di);
     printf("%s DI number: %d\n\n", module_name, total_di);
+
+    USBIO_DI_SetDigitalFilterWidth(DevNum, 50);
 }
 
 void Task::DeactivateSensor()
@@ -1786,6 +1756,65 @@ void Task::DeactivateSensor()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for Homing Mode
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Task::CheckCurrentPosition(std::shared_ptr<TMotor> motor)
+{
+    struct can_frame frame;
+    fillCanFrameFromInfo(&frame, motor->getCanFrameForCheckMotor());
+    canUtils.set_all_sockets_timeout(0, 5000 /*5ms*/);
+
+    canUtils.clear_all_can_buffers();
+    auto interface_name = motor->interFaceName;
+
+    canUtils.restart_all_can_ports();
+    if (canUtils.sockets.find(interface_name) != canUtils.sockets.end())
+    {
+        int socket_descriptor = canUtils.sockets.at(interface_name);
+        ssize_t bytesWritten = write(socket_descriptor, &frame, sizeof(can_frame));
+
+        if (bytesWritten == -1)
+        {
+            cerr << "Failed to write to socket for motor: " << motor->nodeId << " (" << interface_name << ")" << endl;
+            cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << endl;
+            return false;
+        }
+
+        ssize_t bytesRead = read(socket_descriptor, &frame, sizeof(can_frame));
+        if (bytesRead == -1)
+        {
+            cerr << "Failed to read from socket for motor: " << motor->nodeId << " (" << interface_name << ")" << endl;
+            cerr << "Error: " << strerror(errno) << " (errno: " << errno << ")" << endl;
+            return false;
+        }
+
+        std::tuple<int, float, float, float> parsedData = TParser.parseRecieveCommand(*motor, &frame);
+        motor->currentPos = std::get<1>(parsedData);
+        cout << "Current Position of [" << std::hex << motor->nodeId << std::dec << "] : " << motor->currentPos << endl;
+        return true;
+    }
+    else
+    {
+        cerr << "Socket not found for interface: " << interface_name << " (" << motor->nodeId << ")" << endl;
+        return false;
+    }
+}
+
+bool Task::CheckAllMotorsCurrentPosition()
+{
+    bool allMotorsChecked = true;
+    for (const auto &motor_pair : tmotors)
+    {
+        std::shared_ptr<TMotor> motor = motor_pair.second;
+        cout << "Checking position for motor: " << motor_pair.first << endl;
+        bool motorChecked = CheckCurrentPosition(motor);
+        if (!motorChecked)
+        {
+            cerr << "Failed to check position for motor: " << motor_pair.first << endl;
+            allMotorsChecked = false;
+        }
+    }
+    return allMotorsChecked;
+}
 
 void Task::CheckCurrentPosition()
 {
@@ -1806,7 +1835,7 @@ void Task::CheckCurrentPosition()
     for (auto &motor_pair : tmotors)
     {
 
-        canUtils.restart_all_can_ports();
+        canUtils.clear_all_can_buffers();
         std::shared_ptr<TMotor> &motor = motor_pair.second;
         auto interface_name = motor->interFaceName;
 
@@ -1886,44 +1915,56 @@ bool Task::PromptUserForHoming(const std::string &motorName)
     return userResponse == 'y';
 }
 
-void Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName)
+float Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName, int sensorBit)
 {
-    //struct can_frame frameToProcess;
-    bool breakOut = false;
+    float firstPosition = 0.0f, secondPosition = 0.0f;
+    bool firstSensorTriggered = false;
+    bool secondSensorTriggered = false;
 
     cout << "Moving " << motorName << " to sensor location.\n";
 
-    // 각 모터에 해당하는 sensor num
-    std::map<std::string, int> SensorNum = {
-        {"L_arm1", 1},
-        {"L_arm2", 0},
-        {"L_arm3", 2},
-        {"R_arm1", 0},
-        {"R_arm2", 0},
-        {"R_arm3", 0}
-    };
-
-    while (!breakOut)
+    while (true)
     {
-        // 모터를 이동시킨 후에 while문 안에 들어가 근접 센서로부터 값을 계속 읽어들임
         USBIO_DI_ReadValue(DevNum, &DIValue);
+        bool sensorTriggered = (DIValue >> sensorBit) & 1;
 
-        // 센서에 인식되면
-        if ((DIValue >> SensorNum[motorName]) & 1)
+        if (!firstSensorTriggered && sensorTriggered)
         {
-            cout << motorName << " is at Sensor location!" << endl;
-            breakOut = true;
+            // 첫 번째 센서 인식
+            firstSensorTriggered = true;
+            CheckCurrentPosition();
+            firstPosition = motor->currentPos;
+            cout << motorName << " first sensor position: " << firstPosition << endl;
         }
+        else if (firstSensorTriggered && !sensorTriggered)
+        {
+            // 센서 인식 해제
+            secondSensorTriggered = true;
+            CheckCurrentPosition();
+            secondPosition = motor->currentPos;
+            cout << motorName << " second sensor position: " << secondPosition << endl;
+
+            break; // while문 탈출
+        }
+
+        if (secondSensorTriggered)
+            break; // 두 번째 센서 인식 후 반복문 탈출
     }
+
+    // 1번과 2번 위치의 차이의 절반을 저장
+    float positionDifference = abs((secondPosition - firstPosition) / 2.0f);
+    cout << motorName << " midpoint position: " << positionDifference << endl;
+
+    return positionDifference;
 }
 
-void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction)
+void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction, double degree, float midpoint)
 {
     struct can_frame frameToProcess;
-    const double targetRadian = M_PI / 2 * direction;
-    int totalSteps = 8000 / 5; // 8초 동안 5ms 간격으로 나누기
-
     CheckCurrentPosition();
+    // 수정된 부분: 사용자가 입력한 각도를 라디안으로 변환
+    const double targetRadian = (degree * M_PI / 180.0 + midpoint) * direction; // 사용자가 입력한 각도를 라디안으로 변환 + midpoint
+    int totalSteps = 4000 / 5;                                                  // 4초 동안 5ms 간격으로 나누기
 
     auto startTime = std::chrono::system_clock::now();
     for (int step = 0; step < totalSteps; ++step)
@@ -1931,34 +1972,38 @@ void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorN
         auto currentTime = std::chrono::system_clock::now();
         while (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() < 5)
         {
-            // 5ms가 되기 전까지 기다림
             currentTime = std::chrono::system_clock::now();
         }
 
         // 5ms마다 목표 위치 계산 및 프레임 전송
-        double targetPosition = motor->currentPos + targetRadian * (static_cast<double>(step) / totalSteps);
-
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 50, 1, 0);
+        double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps) + motor->currentPos;
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 300, 2.5, 0);
         SendCommandToMotor(motor, frameToProcess, motorName);
 
-        // 다음 5ms 간격을 위해 시작 시간 업데이트
         startTime = std::chrono::system_clock::now();
     }
 }
+
+struct MotorSettings
+{
+    double direction;
+    int sensorBit;
+};
 
 void Task::SetHome()
 {
     struct can_frame frameToProcess;
     Task::ActivateSensor();
 
-    // 각 모터의 방향 설정
-    std::map<std::string, double> directionSettings = {
-        {"R_arm1", 1.0},
-        {"L_arm1", 1.0},
-        {"R_arm2", 1.0},
-        {"R_arm3", 1.0},
-        {"L_arm2", -1.0},
-        {"L_arm3", -1.0}
+    // 각 모터의 방향 및 센서 비트 설정
+    std::map<std::string, MotorSettings> motorSettings = {
+        {"R_arm1", {1.0, 0}}, // 예시: R_arm1 모터의 방향 1.0, 센서 비트 0
+        {"L_arm1", {1.0, 1}},
+        {"R_arm2", {1.0, 0}},
+        {"R_arm3", {1.0, 0}},
+        {"L_arm2", {-1.0, 0}},
+        {"L_arm3", {-1.0, 2}},
+        // ... 다른 모터 설정 ...
     };
 
     for (const auto &socketPair : canUtils.sockets)
@@ -1970,39 +2015,46 @@ void Task::SetHome()
             std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
         }
     }
+
     for (auto &motor_pair : tmotors)
     {
+        // 허리는 home 안잡음
         if (motor_pair.first == "waist")
             continue;
-        std::shared_ptr<TMotor> &motor = motor_pair.second;
 
+        std::shared_ptr<TMotor> &motor = motor_pair.second;
+        MotorSettings &settings = motorSettings[motor_pair.first];
         if (!PromptUserForHoming(motor_pair.first)) // 사용자에게 홈 설정을 묻는 함수
             continue;
 
-        double initialDirection = 0.2 * directionSettings[motor_pair.first];
-        if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2")
-            initialDirection = 0.9 * directionSettings[motor_pair.first];
+        // arm2 모터는 -30도, 나머지 모터는 +90도에 센서 위치함.
+        double initialDirection = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? (-0.2) * settings.direction : 0.2 * settings.direction;
 
-
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, 0);
+        double additionalTorque = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? settings.direction * (-1.6) : 0;
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, additionalTorque);
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
-        std::cout << "InitialDirection For speed loop : "<<initialDirection << endl;  
 
-        //MoveMotorToSensorLocation(motor, motor_pair.first); // 모터를 센서 위치까지 이동시키는 함수
+        float midpoint = MoveMotorToSensorLocation(motor, motor_pair.first, settings.sensorBit); // 모터를 센서 위치까지 이동시키는 함수, 센서 비트 전달
+                                                                                                 // 모터를 센서 위치까지 이동시키는 함수
 
         cout << "\nPress Enter to move to Home Position\n";
         getchar();
 
-        RotateMotor(motor, motor_pair.first, -directionSettings[motor_pair.first]);
+        double degree = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? -30.0 : 90.0;
+        midpoint = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? (-1) * midpoint : midpoint;
+        RotateMotor(motor, motor_pair.first, -settings.direction, degree, midpoint);
 
         cout << "----------------------moved 90 degree (Anti clock wise) --------------------------------- \n";
         // 모터를 멈추는 신호를 보냄
-        //TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
-        //SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
+        SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
+        sleep(1);
         // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
+        
+       //CheckCurrentPosition();
 
         // 상태 확인
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
@@ -2010,8 +2062,15 @@ void Task::SetHome()
 
         if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1")
         {
-            RotateMotor(motor, motor_pair.first, directionSettings[motor_pair.first]);
+            RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
         }
+
+        /*
+        if (motor_pair.first == "L_arm3" || motor_pair.first == "R_arm3")
+        {
+            RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
+        }
+        */
     }
 
     cout << "All in Home\n";
@@ -2021,7 +2080,7 @@ void Task::SetHome()
 void Task::FixMotorPosition()
 {
     struct can_frame frame;
-    Task::CheckCurrentPosition();
+    CheckCurrentPosition();
     for (const auto &motorPair : tmotors)
     {
         std::string name = motorPair.first;

@@ -87,7 +87,7 @@ private:
     // Ready Array : 0, 90, 90, 45, 75, 45, 75
     vector<double> standby = {0, M_PI / 2, M_PI / 2, M_PI / 4, M_PI / 2.4, M_PI / 4, M_PI / 2.4};
 
-    int total_line = 0;
+    int end = 0;
     int line = 0;
 
     double p_R = 0; // 오른손 이전 악기 유무
@@ -159,10 +159,12 @@ private:
 
     // Functions for Homing Mode
     void SetHome();
+    bool CheckCurrentPosition(std::shared_ptr<TMotor> motor);
+    bool CheckAllMotorsCurrentPosition();
     void CheckCurrentPosition();
     void FixMotorPosition();
-    void MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName);
-    void RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction);
+    float MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std::string &motorName, int sensorBit);
+    void RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction, double degree, float midpoint);
     void SendCommandToMotor(std::shared_ptr<TMotor> &motor, struct can_frame &frame, const std::string &motorName);
     bool PromptUserForHoming(const std::string &motorName);
 };
