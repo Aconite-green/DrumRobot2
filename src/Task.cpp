@@ -92,7 +92,7 @@ void Task::operator()()
         {
             do
             {
-                CheckCurrentPosition();
+                CheckAllMotorsCurrentPosition();
                 std::cout << "Do you want to check again? (y/n): ";
                 std::cin >> userInput;
                 userInput = std::tolower(userInput);
@@ -352,6 +352,74 @@ void Task::DeactivateControlTask()
         std::cout << "No Maxon motors to process." << std::endl;
     }
 }
+
+void Task::initializeTMotors()
+{
+    for (auto &motor_pair : tmotors)
+    {
+        std::shared_ptr<TMotor> &motor = motor_pair.second;
+
+        // 각 모터 이름에 따른 멤버 변수 설정
+        if (motor_pair.first == "waist")
+        {
+            motor->cwDir = 1.0f;
+            motor->pMin = -M_PI / 2.0f;     // -90deg
+            motor->pMax = M_PI / 2.0f;      // 90deg
+        }
+        else if (motor_pair.first == "R_arm1")
+        {
+            motor->cwDir = 1.0f;
+            motor->sensorBit = 1;
+            motor->pMin = -0.0f;        // -0deg
+            motor->pMax = M_PI;         // 180deg
+        }
+        else if (motor_pair.first == "L_arm1")
+        {
+            motor->cwDir = 1.0f;
+            motor->sensorBit = 1;
+            motor->pMin = -0.0f;        // -0deg
+            motor->pMax = M_PI;         // 180deg
+        }
+        else if (motor_pair.first == "R_arm2")
+        {
+            motor->cwDir = 1.0f;
+            motor->sensorBit = 1;
+            motor->pMin = -M_PI / 4.0f; // -45deg
+            motor->pMax = M_PI / 2.0f;  // 90deg
+        }
+        else if (motor_pair.first == "R_arm3")
+        {
+            motor->cwDir = 1.0f;
+            motor->sensorBit = 1;
+            motor->pMin = -0.0f;                // -0deg
+            motor->pMax = 2.0f * M_PI / 3.0f;   // 120deg
+        }
+        else if (motor_pair.first == "L_arm2")
+        {
+            motor->cwDir = -1.0f;
+            motor->sensorBit = 0;
+            motor->pMin = -M_PI / 4.0f; // -45deg
+            motor->pMax = M_PI / 2.0f;  // 90deg
+        }
+        else if (motor_pair.first == "L_arm3")
+        {
+            motor->cwDir = -1.0f;
+            motor->sensorBit = 2;
+            motor->pMin = -0.0f;                // -0deg
+            motor->pMax = 2.0f * M_PI / 3.0f;   // 120deg
+        }
+    }
+
+    map<string, shared_ptr<MaxonMotor>> maxonMotors;
+    /*maxonMotors["a_maxon"] = make_shared<MaxonMotor>(0x001,
+                                                          vector<uint32_t>{0x201, 0x301},
+                                                          vector<uint32_t>{0x181},
+                                                          "can0");
+    maxonMotors["b_maxon"] = make_shared<MaxonMotor>(0x002,
+                                                          vector<uint32_t>{0x202, 0x302},
+                                                          vector<uint32_t>{0x182},
+                                                          "can0");*/
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for Testing
@@ -1288,7 +1356,17 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Pi[motor_mapping[entry.first]];
             float v_des = Vi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, 50, 1, 0);
+            if(p_des < motor->pMin){
+                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMin << " )\n";
+                p_des = motor->pMin;
+                v_des = 0.0f;
+            }
+            else if(p_des > motor->pMax){
+                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMax << " )\n";
+                p_des = motor->pMax;
+                v_des = 0.0f;
+            }
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, v_des * motor->cwDir, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
     }
@@ -1304,7 +1382,17 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Pi[motor_mapping[entry.first]];
             float v_des = Vi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, 50, 1, 0);
+            if(p_des < motor->pMin){
+                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMin << " )\n";
+                p_des = motor->pMin;
+                v_des = 0.0f;
+            }
+            else if(p_des > motor->pMax){
+                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMax << " )\n";
+                p_des = motor->pMax;
+                v_des = 0.0f;
+            }
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, v_des * motor->cwDir, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
     }
@@ -1760,7 +1848,7 @@ void Task::DeactivateSensor()
 bool Task::CheckCurrentPosition(std::shared_ptr<TMotor> motor)
 {
     struct can_frame frame;
-    fillCanFrameFromInfo(&frame, motor->getCanFrameForCheckMotor());
+    fillCanFrameFromInfo(&frame, motor->getCanFrameForControlMode());
     canUtils.set_all_sockets_timeout(0, 5000 /*5ms*/);
 
     canUtils.clear_all_can_buffers();
@@ -1932,7 +2020,7 @@ float Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std:
         {
             // 첫 번째 센서 인식
             firstSensorTriggered = true;
-            CheckCurrentPosition();
+            CheckCurrentPosition(motor);
             firstPosition = motor->currentPos;
             cout << motorName << " first sensor position: " << firstPosition << endl;
         }
@@ -1940,7 +2028,7 @@ float Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std:
         {
             // 센서 인식 해제
             secondSensorTriggered = true;
-            CheckCurrentPosition();
+            CheckCurrentPosition(motor);
             secondPosition = motor->currentPos;
             cout << motorName << " second sensor position: " << secondPosition << endl;
 
@@ -1961,23 +2049,29 @@ float Task::MoveMotorToSensorLocation(std::shared_ptr<TMotor> &motor, const std:
 void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorName, double direction, double degree, float midpoint)
 {
     struct can_frame frameToProcess;
-    CheckCurrentPosition();
+    chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+    TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, motor->currentPos, 0, 150, 1, 0);
+    SendCommandToMotor(motor, frameToProcess, motorName);
+
     // 수정된 부분: 사용자가 입력한 각도를 라디안으로 변환
     const double targetRadian = (degree * M_PI / 180.0 + midpoint) * direction; // 사용자가 입력한 각도를 라디안으로 변환 + midpoint
     int totalSteps = 4000 / 5;                                                  // 4초 동안 5ms 간격으로 나누기
 
-    auto startTime = std::chrono::system_clock::now();
-    for (int step = 0; step < totalSteps; ++step)
+    
+    for (int step = 1; step <= totalSteps; ++step)
     {
-        auto currentTime = std::chrono::system_clock::now();
-        while (std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() < 5)
+        while (1)
         {
-            currentTime = std::chrono::system_clock::now();
+            chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
+            if(chrono::duration_cast<chrono::microseconds>(currentTime - startTime).count() > 5000)
+                break;
         }
+
+        startTime = std::chrono::system_clock::now();
 
         // 5ms마다 목표 위치 계산 및 프레임 전송
         double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps) + motor->currentPos;
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 300, 2.5, 0);
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 150, 1, 0);
         SendCommandToMotor(motor, frameToProcess, motorName);
 
         startTime = std::chrono::system_clock::now();
@@ -2030,7 +2124,7 @@ void Task::SetHome()
         // arm2 모터는 -30도, 나머지 모터는 +90도에 센서 위치함.
         double initialDirection = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? (-0.2) * settings.direction : 0.2 * settings.direction;
 
-        double additionalTorque = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? settings.direction * (-1.6) : 0;
+        double additionalTorque = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? settings.direction * (-1.65) : 0;
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, initialDirection, 0, 4.5, additionalTorque);
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
@@ -2041,7 +2135,7 @@ void Task::SetHome()
         getchar();
 
         double degree = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? -30.0 : 90.0;
-        midpoint = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? (-1) * midpoint : midpoint;
+        midpoint = (motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2") ? -midpoint : midpoint;
         RotateMotor(motor, motor_pair.first, -settings.direction, degree, midpoint);
 
         cout << "----------------------moved 90 degree (Anti clock wise) --------------------------------- \n";
@@ -2049,20 +2143,25 @@ void Task::SetHome()
         TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, 0, 0, 0, 5, 0);
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
-        sleep(1);
+        //sleep(10);
         // 그 상태에서 setzero 명령을 보냄(현재 position을 0으로 인식)
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForZeroing());
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
         
-       //CheckCurrentPosition();
 
         // 상태 확인
-        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForCheckMotor());
+        fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForControlMode());
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
-        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1")
+        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1" || motor_pair.first == "L_arm3" || motor_pair.first == "R_arm3")
         {
+            CheckCurrentPosition(motor);
             RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
+        }
+        if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2")
+        {
+            CheckCurrentPosition(motor);
+            RotateMotor(motor, motor_pair.first, settings.direction, -45, 0);
         }
 
         /*

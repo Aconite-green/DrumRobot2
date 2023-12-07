@@ -66,6 +66,7 @@ private:
     // DeactivateTask/ActivateTask
     void ActivateControlTask();
     void DeactivateControlTask();
+    void initializeTMotors();
     vector<string> extractIfnamesFromMotors(const map<string, shared_ptr<TMotor>, CustomCompare> &motors);
 
     // Functions for Testing
@@ -79,7 +80,7 @@ private:
     vector<vector<double>> right_inst;
     vector<vector<double>> left_inst;
 
-    int bpm = 80;
+    int bpm = 10;
     vector<double> time_arr;
     vector<vector<int>> RA, LA;
     vector<int> RF, LF;
