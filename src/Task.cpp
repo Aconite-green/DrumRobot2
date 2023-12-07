@@ -29,6 +29,7 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
+    initializeTMotors();
     std::cout << "Start Ready. \n";
     bool isHomeSet = false; // Home 설정 상태
 
@@ -175,6 +176,7 @@ void Task::ActivateControlTask()
 
             // 구분자 추가
             std::cout << "=======================================" << std::endl;
+            getchar();
         }
     }
     else
@@ -1168,7 +1170,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, 0, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
         // cout << "\n";
@@ -1420,7 +1422,7 @@ void Task::GetBackArr()
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, 0, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
         // cout << "\n";
@@ -2153,18 +2155,17 @@ void Task::SetHome()
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForControlMode());
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
-        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1" || motor_pair.first == "L_arm3" || motor_pair.first == "R_arm3")
+        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1")
         {
             CheckCurrentPosition(motor);
             RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
         }
+        /*
         if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2")
         {
             CheckCurrentPosition(motor);
             RotateMotor(motor, motor_pair.first, settings.direction, -45, 0);
         }
-
-        /*
         if (motor_pair.first == "L_arm3" || motor_pair.first == "R_arm3")
         {
             RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
