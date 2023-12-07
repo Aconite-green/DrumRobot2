@@ -86,7 +86,7 @@ private:
     vector<int> RF, LF;
 
     // Ready Array : 0, 90, 90, 45, 75, 45, 75
-    vector<double> standby = {0, M_PI / 2, M_PI / 2, M_PI / 4, M_PI / 2.4, M_PI / 4, M_PI / 2.4};
+    vector<double> standby = {0, M_PI / 2, M_PI / 2, M_PI / 4, M_PI / 2.4, -M_PI / 4, -M_PI / 2.4};
 
     int end = 0;
     int line = 0;

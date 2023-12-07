@@ -1152,6 +1152,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
     struct can_frame frame;
     struct can_frame frameToProcess;
     chrono::system_clock::time_point external = std::chrono::system_clock::now();
+    CheckAllMotorsCurrentPosition();
 
     vector<double> Qi;
     vector<vector<double>> q_ready;
@@ -1160,6 +1161,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         std::shared_ptr<TMotor> &motor = entry.second;
         c_MotorAngle[motor_mapping[entry.first]] = motor->currentPos;
     }
+    sleep(3);
 
     //// 준비자세 배열 생성
     int n = 800;
@@ -1172,7 +1174,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, 0, 200.0, 3.0, 0.0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
         // cout << "\n";
