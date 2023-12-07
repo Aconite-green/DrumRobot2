@@ -44,6 +44,7 @@ chmod +x /home/shy/DrumRobot2/scripts/sudo-gdb.sh
     //tmotors["L_arm2"] = make_shared<TMotor>(0x005, "AK70_10", "can0");
     //tmotors["L_arm3"] = make_shared<TMotor>(0x006, "AK70_10", "can0");
 
+
     map<string, shared_ptr<MaxonMotor>> maxonMotors;
     /*maxonMotors["a_maxon"] = make_shared<MaxonMotor>(0x001,
                                                           vector<uint32_t>{0x201, 0x301},

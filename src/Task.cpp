@@ -29,6 +29,7 @@ void Task::operator()()
     // Begin Operation
     ActivateControlTask();
     GetMusicSheet();
+    initializeTMotors();
     std::cout << "Start Ready. \n";
     bool isHomeSet = false; // Home 설정 상태
 
@@ -363,50 +364,50 @@ void Task::initializeTMotors()
         if (motor_pair.first == "waist")
         {
             motor->cwDir = 1.0f;
-            motor->pMin = -M_PI / 2.0f;     // -90deg
-            motor->pMax = M_PI / 2.0f;      // 90deg
+            motor->rMin = -M_PI / 2.0f;     // -90deg
+            motor->rMax = M_PI / 2.0f;      // 90deg
         }
         else if (motor_pair.first == "R_arm1")
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->pMin = -0.0f;        // -0deg
-            motor->pMax = M_PI;         // 180deg
+            motor->rMin = -0.0f;        // -0deg
+            motor->rMax = M_PI;         // 180deg
         }
         else if (motor_pair.first == "L_arm1")
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->pMin = -0.0f;        // -0deg
-            motor->pMax = M_PI;         // 180deg
+            motor->rMin = -0.0f;        // -0deg
+            motor->rMax = M_PI;         // 180deg
         }
         else if (motor_pair.first == "R_arm2")
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->pMin = -M_PI / 4.0f; // -45deg
-            motor->pMax = M_PI / 2.0f;  // 90deg
+            motor->rMin = -M_PI / 4.0f; // -45deg
+            motor->rMax = M_PI / 2.0f;  // 90deg
         }
         else if (motor_pair.first == "R_arm3")
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->pMin = -0.0f;                // -0deg
-            motor->pMax = 2.0f * M_PI / 3.0f;   // 120deg
+            motor->rMin = -0.0f;                // -0deg
+            motor->rMax = 2.0f * M_PI / 3.0f;   // 120deg
         }
         else if (motor_pair.first == "L_arm2")
         {
             motor->cwDir = -1.0f;
             motor->sensorBit = 0;
-            motor->pMin = -M_PI / 4.0f; // -45deg
-            motor->pMax = M_PI / 2.0f;  // 90deg
+            motor->rMin = -M_PI / 4.0f; // -45deg
+            motor->rMax = M_PI / 2.0f;  // 90deg
         }
         else if (motor_pair.first == "L_arm3")
         {
             motor->cwDir = -1.0f;
             motor->sensorBit = 2;
-            motor->pMin = -0.0f;                // -0deg
-            motor->pMax = 2.0f * M_PI / 3.0f;   // 120deg
+            motor->rMin = -0.0f;                // -0deg
+            motor->rMax = 2.0f * M_PI / 3.0f;   // 120deg
         }
     }
 
@@ -1040,6 +1041,9 @@ void Task::GetMusicSheet()
         for (int j = 0; j < 8; ++j)
         {
             inputFile >> inst_xyz[i][j];
+            if(i == 0 || i == 1 || i == 3 || i == 4){
+                inst_xyz[i][j] = inst_xyz[i][j] * 1.2;
+            }
         }
     }
 
@@ -1168,7 +1172,7 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, 0, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
         // cout << "\n";
@@ -1242,11 +1246,11 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             Q1 = c_MotorAngle;
             if (p_R == 1)
             {
-                Q1[4] = Q1[4] + M_PI / 18;
+                Q1[4] = Q1[4] + M_PI / 36;
             }
             if (p_L == 1)
             {
-                Q1[6] = Q1[6] + M_PI / 18;
+                Q1[6] = Q1[6] + M_PI / 36;
             }
             Q2 = Q1;
         }
@@ -1256,20 +1260,20 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             Q2 = Q1;
             if (c_R == 0)
             { // 왼손만 침
-                Q1[4] = Q1[4] + M_PI / 18;
-                Q2[4] = Q2[4] + M_PI / 18;
-                Q1[6] = Q1[6] + M_PI / 6;
+                Q1[4] = Q1[4] + M_PI / 36;
+                Q2[4] = Q2[4] + M_PI / 36;
+                Q1[6] = Q1[6] + M_PI / 18;
             }
             if (c_L == 0)
             { // 오른손만 침
-                Q1[4] = Q1[4] + M_PI / 6;
-                Q2[6] = Q2[6] + M_PI / 18;
-                Q2[6] = Q2[6] + M_PI / 18;
+                Q1[4] = Q1[4] + M_PI / 18;
+                Q2[6] = Q2[6] + M_PI / 36;
+                Q2[6] = Q2[6] + M_PI / 36;
             }
             else
             { // 왼손 & 오른손 침
-                Q1[4] = Q1[4] + M_PI / 6;
-                Q1[6] = Q1[6] + M_PI / 6;
+                Q1[4] = Q1[4] + M_PI / 18;
+                Q1[6] = Q1[6] + M_PI / 18;
             }
         }
 
@@ -1304,11 +1308,11 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Q3 = c_MotorAngle;
         if (p_R == 1)
         {
-            Q3[4] = Q3[4] + M_PI / 18;
+            Q3[4] = Q3[4] + M_PI / 36;
         }
         if (p_L == 1)
         {
-            Q3[6] = Q3[6] + M_PI / 18;
+            Q3[6] = Q3[6] + M_PI / 36;
         }
         Q4 = Q3;
     }
@@ -1318,20 +1322,20 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         Q4 = Q3;
         if (c_R == 0)
         { // 왼손만 침
-            Q3[4] = Q3[4] + M_PI / 18;
-            Q4[4] = Q4[4] + M_PI / 18;
-            Q3[6] = Q3[6] + M_PI / 6;
+            Q3[4] = Q3[4] + M_PI / 36;
+            Q4[4] = Q4[4] + M_PI / 36;
+            Q3[6] = Q3[6] + M_PI / 18;
         }
         if (c_L == 0)
         { // 오른손만 침
-            Q3[4] = Q3[4] + M_PI / 6;
-            Q4[6] = Q4[6] + M_PI / 18;
-            Q4[6] = Q4[6] + M_PI / 18;
+            Q3[4] = Q3[4] + M_PI / 18;
+            Q4[6] = Q4[6] + M_PI / 36;
+            Q4[6] = Q4[6] + M_PI / 36;
         }
         else
         { // 왼손 & 오른손 침
-            Q3[4] = Q3[4] + M_PI / 6;
-            Q3[6] = Q3[6] + M_PI / 6;
+            Q3[4] = Q3[4] + M_PI / 18;
+            Q3[6] = Q3[6] + M_PI / 18;
         }
     }
 
@@ -1356,16 +1360,20 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Pi[motor_mapping[entry.first]];
             float v_des = Vi[motor_mapping[entry.first]];
-            if(p_des < motor->pMin){
-                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMin << " )\n";
-                p_des = motor->pMin;
+            
+            if(p_des < motor->rMin){
+                cout << entry.first << " is out of range.  ( " << p_des << " => " << motor->rMin << " )\n";
+                p_des = motor->rMin;
                 v_des = 0.0f;
+                getchar();
             }
-            else if(p_des > motor->pMax){
-                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMax << " )\n";
-                p_des = motor->pMax;
+            else if(p_des > motor->rMax){
+                cout << entry.first << " is out of range.  ( " << p_des << " => " << motor->rMax << " )\n";
+                p_des = motor->rMax;
                 v_des = 0.0f;
+                getchar();
             }
+            
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, v_des * motor->cwDir, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
@@ -1382,16 +1390,20 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Pi[motor_mapping[entry.first]];
             float v_des = Vi[motor_mapping[entry.first]];
-            if(p_des < motor->pMin){
-                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMin << " )\n";
-                p_des = motor->pMin;
+            
+            if(p_des < motor->rMin){
+                cout << entry.first << " is out of range.  ( " << p_des << " => " << motor->rMin << " )\n";
+                p_des = motor->rMin;
                 v_des = 0.0f;
+                getchar();
             }
-            else if(p_des > motor->pMax){
-                cout << entry.first << "is out of range.  ( " << p_des << " => " << motor->pMax << " )\n";
-                p_des = motor->pMax;
+            else if(p_des > motor->rMax){
+                cout << entry.first << " is out of range.  ( " << p_des << " => " << motor->rMax << " )\n";
+                p_des = motor->rMax;
                 v_des = 0.0f;
+                getchar();
             }
+            
             TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, v_des * motor->cwDir, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
@@ -1420,7 +1432,7 @@ void Task::GetBackArr()
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 50, 1, 0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, 0, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
         // cout << "\n";
@@ -2071,7 +2083,7 @@ void Task::RotateMotor(std::shared_ptr<TMotor> &motor, const std::string &motorN
 
         // 5ms마다 목표 위치 계산 및 프레임 전송
         double targetPosition = targetRadian * (static_cast<double>(step) / totalSteps) + motor->currentPos;
-        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 150, 1, 0);
+        TParser.parseSendCommand(*motor, &frameToProcess, motor->nodeId, 8, targetPosition, 0, 250, 2.5, 0);
         SendCommandToMotor(motor, frameToProcess, motorName);
 
         startTime = std::chrono::system_clock::now();
@@ -2153,18 +2165,17 @@ void Task::SetHome()
         fillCanFrameFromInfo(&frameToProcess, motor->getCanFrameForControlMode());
         SendCommandToMotor(motor, frameToProcess, motor_pair.first);
 
-        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1" || motor_pair.first == "L_arm3" || motor_pair.first == "R_arm3")
+        if (motor_pair.first == "L_arm1" || motor_pair.first == "R_arm1")
         {
             CheckCurrentPosition(motor);
             RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
         }
+        /*
         if(motor_pair.first == "L_arm2" || motor_pair.first == "R_arm2")
         {
             CheckCurrentPosition(motor);
             RotateMotor(motor, motor_pair.first, settings.direction, -45, 0);
         }
-
-        /*
         if (motor_pair.first == "L_arm3" || motor_pair.first == "R_arm3")
         {
             RotateMotor(motor, motor_pair.first, settings.direction, 90, 0);
