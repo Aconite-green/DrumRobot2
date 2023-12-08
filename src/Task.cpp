@@ -371,14 +371,14 @@ void Task::initializeTMotors()
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->rMin = -0.0f;        // -0deg
+            motor->rMin = 0.0f;        // 0deg
             motor->rMax = M_PI;         // 180deg
         }
         else if (motor_pair.first == "L_arm1")
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->rMin = -0.0f;        // -0deg
+            motor->rMin = 0.0f;        // 0deg
             motor->rMax = M_PI;         // 180deg
         }
         else if (motor_pair.first == "R_arm2")
@@ -392,22 +392,22 @@ void Task::initializeTMotors()
         {
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
-            motor->rMin = -0.0f;                // -0deg
+            motor->rMin = 0.0f;                // 0deg
             motor->rMax = 2.0f * M_PI / 3.0f;   // 120deg
         }
         else if (motor_pair.first == "L_arm2")
         {
             motor->cwDir = -1.0f;
             motor->sensorBit = 0;
-            motor->rMin = -M_PI / 4.0f; // -45deg
-            motor->rMax = M_PI / 2.0f;  // 90deg
+            motor->rMin = -M_PI / 2.0f; // -90deg
+            motor->rMax = M_PI / 4.0f;  // 45deg
         }
         else if (motor_pair.first == "L_arm3")
         {
             motor->cwDir = -1.0f;
             motor->sensorBit = 2;
-            motor->rMin = -0.0f;                // -0deg
-            motor->rMax = 2.0f * M_PI / 3.0f;   // 120deg
+            motor->rMin = -2.0f * M_PI / 3.0f;  // -120deg
+            motor->rMax = 0.0f;                 // 0deg
         }
     }
 
@@ -1017,7 +1017,12 @@ vector<double> Task::IKfun(vector<double> &P1, vector<double> &P2, vector<double
 
     for (int i = 0; i < 7; i++)
     {
-        Qf[i] = Q[i][index_theta0_med];
+        if(i == 5 || i == 6){
+            Qf[i] = -Q[i][index_theta0_med];
+        }
+        else{
+            Qf[i] = Q[i][index_theta0_med];
+        }
     }
 
     return Qf;
@@ -1252,7 +1257,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             }
             if (p_L == 1)
             {
-                Q1[6] = Q1[6] + M_PI / 36;
+                Q1[6] = Q1[6] - M_PI / 36;
             }
             Q2 = Q1;
         }
@@ -1264,18 +1269,18 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
             { // 왼손만 침
                 Q1[4] = Q1[4] + M_PI / 36;
                 Q2[4] = Q2[4] + M_PI / 36;
-                Q1[6] = Q1[6] + M_PI / 18;
+                Q1[6] = Q1[6] - M_PI / 18;
             }
             if (c_L == 0)
             { // 오른손만 침
                 Q1[4] = Q1[4] + M_PI / 18;
-                Q2[6] = Q2[6] + M_PI / 36;
-                Q2[6] = Q2[6] + M_PI / 36;
+                Q2[6] = Q2[6] - M_PI / 36;
+                Q2[6] = Q2[6] - M_PI / 36;
             }
             else
             { // 왼손 & 오른손 침
                 Q1[4] = Q1[4] + M_PI / 18;
-                Q1[6] = Q1[6] + M_PI / 18;
+                Q1[6] = Q1[6] - M_PI / 18;
             }
         }
 
@@ -1314,7 +1319,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         }
         if (p_L == 1)
         {
-            Q3[6] = Q3[6] + M_PI / 36;
+            Q3[6] = Q3[6] - M_PI / 36;
         }
         Q4 = Q3;
     }
@@ -1326,18 +1331,18 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
         { // 왼손만 침
             Q3[4] = Q3[4] + M_PI / 36;
             Q4[4] = Q4[4] + M_PI / 36;
-            Q3[6] = Q3[6] + M_PI / 18;
+            Q3[6] = Q3[6] - M_PI / 18;
         }
         if (c_L == 0)
         { // 오른손만 침
             Q3[4] = Q3[4] + M_PI / 18;
-            Q4[6] = Q4[6] + M_PI / 36;
-            Q4[6] = Q4[6] + M_PI / 36;
+            Q4[6] = Q4[6] - M_PI / 36;
+            Q4[6] = Q4[6] - M_PI / 36;
         }
         else
         { // 왼손 & 오른손 침
             Q3[4] = Q3[4] + M_PI / 18;
-            Q3[6] = Q3[6] + M_PI / 18;
+            Q3[6] = Q3[6] - M_PI / 18;
         }
     }
 
@@ -1376,7 +1381,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
                 getchar();
             }
             
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, v_des * motor->cwDir, 200.0, 3.0, 0.0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
     }
@@ -1406,7 +1411,7 @@ void Task::PathLoopTask(queue<can_frame> &sendBuffer)
                 getchar();
             }
             
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, v_des * motor->cwDir, 200.0, 3.0, 0.0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, v_des, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
     }
@@ -1434,7 +1439,7 @@ void Task::GetBackArr()
         {
             std::shared_ptr<TMotor> &motor = entry.second;
             float p_des = Qi[motor_mapping[entry.first]];
-            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des * motor->cwDir, 0, 200.0, 3.0, 0.0);
+            TParser.parseSendCommand(*motor, &frame, motor->nodeId, 8, p_des, 0, 200.0, 3.0, 0.0);
             sendBuffer.push(frame);
         }
         // cout << "\n";
