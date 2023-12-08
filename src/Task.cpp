@@ -1105,7 +1105,7 @@ void Task::GetMusicSheet()
     map<string, int> instrument_mapping = {
         {"0", 10}, {"1", 3}, {"2", 6}, {"3", 7}, {"4", 9}, {"5", 4}, {"6", 5}, {"7", 4}, {"8", 8}, {"11", 3}, {"51", 3}, {"61", 3}, {"71", 3}, {"81", 3}, {"91", 3}};
 
-    string score_path = "../include/codeConfession.txt";
+    string score_path = "../include/codeConfession_short.txt";
 
     ifstream file(score_path);
     if (!file.is_open())
