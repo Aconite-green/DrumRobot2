@@ -1047,7 +1047,7 @@ void Task::GetMusicSheet()
         {
             inputFile >> inst_xyz[i][j];
             if(i == 0 || i == 1 || i == 3 || i == 4){
-                inst_xyz[i][j] = inst_xyz[i][j] * 1.2;
+                inst_xyz[i][j] = inst_xyz[i][j] * 1.25;
             }
         }
     }
