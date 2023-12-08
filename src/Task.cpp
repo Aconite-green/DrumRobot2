@@ -364,7 +364,7 @@ void Task::initializeTMotors()
         if (motor_pair.first == "waist")
         {
             motor->cwDir = 1.0f;
-            motor->rMin = -M_PI / 2.0f;     // -90deg
+            motor->rMin = -M_PI * 0.75f;     // -120deg
             motor->rMax = M_PI / 2.0f;      // 90deg
         }
         else if (motor_pair.first == "R_arm1")
@@ -393,7 +393,7 @@ void Task::initializeTMotors()
             motor->cwDir = 1.0f;
             motor->sensorBit = 1;
             motor->rMin = 0.0f;                // 0deg
-            motor->rMax = 2.0f * M_PI / 3.0f;   // 120deg
+            motor->rMax = M_PI * 0.75f;   // 135deg
         }
         else if (motor_pair.first == "L_arm2")
         {
@@ -406,7 +406,7 @@ void Task::initializeTMotors()
         {
             motor->cwDir = -1.0f;
             motor->sensorBit = 2;
-            motor->rMin = -2.0f * M_PI / 3.0f;  // -120deg
+            motor->rMin = -M_PI * 0.75f;  // -135deg
             motor->rMax = 0.0f;                 // 0deg
         }
     }
@@ -1166,7 +1166,6 @@ void Task::GetReadyArr(queue<can_frame> &sendBuffer)
         std::shared_ptr<TMotor> &motor = entry.second;
         c_MotorAngle[motor_mapping[entry.first]] = motor->currentPos;
     }
-    sleep(3);
 
     //// 준비자세 배열 생성
     int n = 800;
